@@ -1,0 +1,143 @@
+html.sticky-mode,
+html.sticky-mode body,
+html.sticky-mode #root {
+  overflow: hidden;
+  background: transparent;
+}
+
+.sticky {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  border: 1px solid rgb(0 0 0 / 0.12);
+  border-radius: 8px;
+  background: var(--note-bg);
+  color: var(--note-text, var(--text));
+}
+
+.sticky-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  height: 34px;
+  padding: 0 4px;
+  background: color-mix(in srgb, var(--note-accent) 35%, var(--note-bg));
+  user-select: none;
+}
+
+.sticky-bar-title {
+  flex: 1;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sticky-btn {
+  display: grid;
+  place-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+.sticky-btn:hover,
+.sticky-btn.active {
+  background: rgb(0 0 0 / 0.08);
+  opacity: 1;
+}
+
+.sticky-menu {
+  position: absolute;
+  top: 36px;
+  right: 6px;
+  z-index: 10;
+  display: grid;
+  gap: 6px;
+  min-width: 200px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
+  font-size: 13px;
+}
+
+.sticky-menu .color-picker {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sticky-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sticky-menu-row input[type="range"] {
+  flex: 1;
+}
+
+.sticky-menu-item {
+  padding: 6px 4px;
+  border-radius: 6px;
+  text-align: left;
+}
+
+.sticky-menu-item:hover {
+  background: var(--bg);
+}
+
+.sticky-menu-item.danger {
+  color: var(--danger);
+}
+
+.sticky-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.sticky .note-editor-body {
+  padding: 8px 14px 14px;
+}
+
+.sticky .note-editor-content {
+  font-size: 15px;
+}
+
+/* 서식 도구모음은 메모를 편집할 때만 보인다 */
+.sticky .toolbar {
+  display: none;
+  padding: 2px 8px;
+}
+
+.sticky:focus-within .toolbar {
+  display: flex;
+}
+
+.sticky .toolbar-btn {
+  min-width: 28px;
+  height: 26px;
+}
+
+.sticky-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+}

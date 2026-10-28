@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import type { Note, NoteColor, NoteView } from "../../domain/note";
 import type { NoteEdit, NoteService } from "../../domain/noteService";
+import { isDesktopApp } from "../../platform/env";
+import { emitNoteChanged } from "../../platform/events";
+import { forgetSticky, isStickyOpen, openSticky } from "../../platform/stickyWindows";
+import { flushPendingEdit, isEditorFocused } from "./editorFlush";
 
 interface NotesState {
   service: NoteService | null;
@@ -8,6 +12,8 @@ interface NotesState {
   view: NoteView;
   query: string;
   selectedId: string | null;
+  /** 다른 창에서 선택 메모가 바뀌면 증가한다. 편집기를 다시 마운트해 최신 내용을 보여 준다. */
+  editorRev: number;
   ready: boolean;
 
   /** selectFirst: 2단 화면(데스크톱)에서 첫 메모를 바로 연다 */
@@ -17,24 +23,18 @@ interface NotesState {
   setQuery(query: string): void;
   select(id: string | null): void;
   create(color?: NoteColor): Promise<void>;
+  /** Hub 선택은 그대로 두고 새 메모를 스티키 창으로 만든다 (트레이·전역 단축키) */
+  createSticky(): Promise<void>;
   edit(id: string, edit: NoteEdit): Promise<void>;
   trash(id: string): Promise<void>;
   restore(id: string): Promise<void>;
   deleteForever(id: string): Promise<void>;
   refresh(): Promise<void>;
+  /** 다른 창(스티키)에서 메모가 바뀌었을 때 */
+  onExternalChange(id: string): Promise<void>;
 }
 
 const SEARCH_DEBOUNCE_MS = 150;
-
-let flushEditor: (() => void) | null = null;
-
-/** 열린 편집기가 저장 대기 중인 입력을 즉시 저장하는 함수를 등록한다. 해제 함수를 반환한다. */
-export function registerEditorFlush(flush: () => void) {
-  flushEditor = flush;
-  return () => {
-    if (flushEditor === flush) flushEditor = null;
-  };
-}
 
 export const useNotes = create<NotesState>((set, get) => {
   let searchTimer: number | undefined;
@@ -51,6 +51,7 @@ export const useNotes = create<NotesState>((set, get) => {
     view: "all",
     query: "",
     selectedId: null,
+    editorRev: 0,
     ready: false,
 
     async init(svc, selectFirst = false) {
@@ -86,40 +87,67 @@ export const useNotes = create<NotesState>((set, get) => {
     async create(color) {
       leaveSelected();
       const note = await service().create(color);
+      emitNoteChanged(note.id);
       window.clearTimeout(searchTimer);
       set({ view: "all", query: "", selectedId: note.id });
       await get().refresh();
     },
 
+    async createSticky() {
+      const note = await service().create();
+      emitNoteChanged(note.id);
+      await get().refresh();
+      await openSticky(note.id, { at: "cursor" });
+    },
+
     async edit(id, edit) {
       await service().edit(id, edit);
+      emitNoteChanged(id);
       await get().refresh();
     },
 
     async trash(id) {
       await service().trash(id);
+      emitNoteChanged(id);
       await afterRemoval(id);
     },
 
     async restore(id) {
       await service().restore(id);
+      emitNoteChanged(id);
       await afterRemoval(id);
     },
 
     async deleteForever(id) {
       await service().deleteForever(id);
+      if (isDesktopApp) await forgetSticky(id);
+      emitNoteChanged(id);
       await afterRemoval(id);
+    },
+
+    async onExternalChange(id) {
+      await get().refresh();
+      if (id === get().selectedId && !isEditorFocused()) {
+        set((s) => ({ editorRev: s.editorRev + 1 }));
+      }
     },
   };
 
-  /** 선택 중인 메모를 떠날 때: 저장 대기 중인 입력을 먼저 저장하고, 비어 있으면 지운다 */
+  /**
+   * 선택 중인 메모를 떠날 때: 저장 대기 중인 입력을 먼저 저장하고, 비어 있으면 지운다.
+   * 스티키 창으로 열려 있는 메모는 그 창에서 쓰는 중일 수 있으므로 지우지 않는다.
+   */
   function leaveSelected() {
     const id = get().selectedId;
     if (!id) return;
-    flushEditor?.();
-    void service()
-      .discardIfEmpty(id)
-      .then((discarded) => (discarded ? get().refresh() : undefined));
+    flushPendingEdit();
+    void (async () => {
+      if (isDesktopApp && (await isStickyOpen(id))) return;
+      if (await service().discardIfEmpty(id)) {
+        emitNoteChanged(id);
+        await get().refresh();
+      }
+    })();
   }
 
   /** 현재 목록에서 사라진 메모 대신 바로 아래(없으면 위) 메모를 선택한다 */

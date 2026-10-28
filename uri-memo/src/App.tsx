@@ -4,6 +4,9 @@ import { NoteService } from "./domain/noteService";
 import { EditorPane } from "./features/notes/EditorPane";
 import { useNotes } from "./features/notes/notesStore";
 import { Sidebar } from "./features/notes/Sidebar";
+import { isDesktopApp } from "./platform/env";
+import { onAppEvent, onNoteChangedElsewhere } from "./platform/events";
+import { restoreOpenStickies } from "./platform/stickyWindows";
 import "./App.css";
 
 /** App.css 의 2단 레이아웃 기준과 같아야 한다 */
@@ -23,8 +26,20 @@ function App() {
       .then((repo) =>
         useNotes.getState().init(new NoteService(repo), window.matchMedia(TWO_PANE_QUERY).matches),
       )
+      .then(() => (isDesktopApp ? restoreOpenStickies() : undefined))
       .catch((e: unknown) => setError(String(e)));
   }, []);
+
+  // 스티키 창의 변경 반영, 트레이·전역 단축키의 "새 메모"
+  useEffect(() => {
+    if (!ready) return;
+    const unlistenChange = onNoteChangedElsewhere((id) => void useNotes.getState().onExternalChange(id));
+    const unlistenNew = onAppEvent("app://new-sticky", () => void useNotes.getState().createSticky());
+    return () => {
+      unlistenChange();
+      unlistenNew();
+    };
+  }, [ready]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

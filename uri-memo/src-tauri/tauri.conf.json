@@ -12,9 +12,13 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Urinote",
-        "width": 800,
-        "height": 600
+        "width": 960,
+        "height": 640,
+        "minWidth": 360,
+        "minHeight": 400,
+        "visible": false
       }
     ],
     "security": {

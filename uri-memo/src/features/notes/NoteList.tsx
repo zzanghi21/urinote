@@ -1,4 +1,6 @@
 import { previewFromText } from "../../domain/note";
+import { isDesktopApp } from "../../platform/env";
+import { openSticky } from "../../platform/stickyWindows";
 import { formatNoteTime } from "./formatTime";
 import { useNotes } from "./notesStore";
 
@@ -28,6 +30,8 @@ export function NoteList() {
             type="button"
             className={`note-card color-${note.color}${note.id === selectedId ? " selected" : ""}`}
             onClick={() => select(note.id)}
+            onDoubleClick={() => isDesktopApp && view !== "trash" && void openSticky(note.id)}
+            title={isDesktopApp && view !== "trash" ? "더블클릭: 바탕화면에 붙이기" : undefined}
             aria-current={note.id === selectedId}
           >
             <span className="note-card-head">

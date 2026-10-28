@@ -5,13 +5,15 @@ import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import type { Note } from "../../domain/note";
 import type { NoteEdit } from "../../domain/noteService";
-import { registerEditorFlush } from "./notesStore";
+import { onAppEvent } from "../../platform/events";
+import { registerEditorFlush } from "./editorFlush";
 
 const SAVE_DEBOUNCE_MS = 500;
 
 interface Props {
   note: Note;
   readOnly?: boolean;
+  autoFocus?: boolean;
   onSave(edit: NoteEdit): void;
 }
 
@@ -27,7 +29,7 @@ function parseContent(content: string) {
 const getPlainText = (editor: Editor) => editor.getText({ blockSeparator: "\n" });
 
 /** 메모 1개를 편집한다. 메모가 바뀌면 key로 다시 마운트되는 것을 전제로 한다. */
-export function NoteEditor({ note, readOnly = false, onSave }: Props) {
+export function NoteEditor({ note, readOnly = false, autoFocus = true, onSave }: Props) {
   const timer = useRef<number | undefined>(undefined);
   const pending = useRef<(() => void) | null>(null);
   const onSaveRef = useRef(onSave);
@@ -45,7 +47,7 @@ export function NoteEditor({ note, readOnly = false, onSave }: Props) {
     extensions: [StarterKit, TaskList, TaskItem.configure({ nested: true })],
     content: parseContent(note.content),
     editable: !readOnly,
-    autofocus: readOnly ? false : "end",
+    autofocus: readOnly || !autoFocus ? false : "end",
     editorProps: { attributes: { class: "note-editor-content", spellcheck: "false" } },
     onUpdate({ editor }) {
       pending.current = () =>
@@ -59,13 +61,15 @@ export function NoteEditor({ note, readOnly = false, onSave }: Props) {
     onBlur: flush,
   });
 
-  // 다른 메모로 전환하거나 창을 닫을 때 저장하지 않은 입력을 저장한다
+  // 다른 메모로 전환하거나 창을 닫거나 앱을 종료할 때 저장하지 않은 입력을 저장한다
   useEffect(() => {
     window.addEventListener("beforeunload", flush);
     const unregister = registerEditorFlush(flush);
+    const unlistenQuit = onAppEvent("app://flush", flush);
     return () => {
       window.removeEventListener("beforeunload", flush);
       unregister();
+      unlistenQuit();
       flush();
     };
   }, []);
