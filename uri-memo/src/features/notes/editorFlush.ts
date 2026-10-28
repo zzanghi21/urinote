@@ -12,8 +12,3 @@ export function registerEditorFlush(flush: () => void) {
 export function flushPendingEdit() {
   flushEditor?.();
 }
-
-/** 편집기 안에 포커스가 있으면 외부 변경으로 내용을 다시 불러오지 않는다 (입력 중 커서 보호) */
-export function isEditorFocused() {
-  return document.hasFocus() && !!document.activeElement?.closest(".note-editor");
-}

@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { MemoryDocStore } from "../data/local/memoryDocStore";
+import { docFromUpdates, plainTextFromDoc } from "./noteDoc";
 import { MemoryNoteRepository } from "../data/local/memoryRepo";
 import { previewFromText, titleFromText, TRASH_RETENTION_MS } from "./note";
 import { NoteService } from "./noteService";
@@ -20,16 +22,13 @@ describe("NoteService", () => {
 
   beforeEach(() => {
     now = 1_000_000;
-    service = new NoteService(new MemoryNoteRepository(), () => now);
+    service = new NoteService(new MemoryNoteRepository(), new MemoryDocStore(), () => now);
   });
 
   it("creates and edits a note, deriving the title", async () => {
     const note = await service.create("blue");
     now += 10;
-    const edited = await service.edit(note.id, {
-      plainText: "회의 메모\n3분기 목표",
-      content: "{}",
-    });
+    const edited = await service.edit(note.id, { plainText: "회의 메모\n3분기 목표" });
 
     expect(edited).toMatchObject({
       title: "회의 메모",
@@ -94,15 +93,47 @@ describe("NoteService", () => {
     expect(await service.get(empty.id)).toBeNull();
 
     const typed = await service.create();
-    void service.edit(typed.id, { plainText: "방금 입력", content: "{}" });
+    void service.edit(typed.id, { plainText: "방금 입력" });
     expect(await service.discardIfEmpty(typed.id)).toBe(false);
     expect(await service.get(typed.id)).not.toBeNull();
+  });
+
+  it("migrates legacy TipTap JSON into a Yjs doc exactly once", async () => {
+    const repo = new MemoryNoteRepository();
+    const docs = new MemoryDocStore();
+    const svc = new NoteService(repo, docs, () => now);
+    const note = await svc.create();
+    const json = JSON.stringify({
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "예전 메모" }] }],
+    });
+    await repo.upsert({ ...note, content: json, plainText: "예전 메모" });
+
+    expect(await svc.migrateLegacyContent()).toBe(1);
+    expect(await svc.migrateLegacyContent()).toBe(0);
+    expect((await svc.get(note.id))?.content).toBe("");
+    expect(plainTextFromDoc(docFromUpdates(await docs.load(note.id)))).toBe("예전 메모");
+  });
+
+  it("removes the document when an empty note is discarded or deleted", async () => {
+    const docs = new MemoryDocStore();
+    const svc = new NoteService(new MemoryNoteRepository(), docs, () => now);
+    const empty = await svc.create();
+    await docs.append(empty.id, new Uint8Array([0, 0]), "local");
+    await svc.discardIfEmpty(empty.id);
+    expect(await docs.load(empty.id)).toHaveLength(0);
+
+    const kept = await svc.create();
+    await svc.edit(kept.id, { plainText: "내용" });
+    await docs.append(kept.id, new Uint8Array([0, 0]), "local");
+    await svc.deleteForever(kept.id);
+    expect(await docs.load(kept.id)).toHaveLength(0);
   });
 
   it("does not lose concurrent edits to the same note", async () => {
     const note = await service.create();
     await Promise.all([
-      service.edit(note.id, { plainText: "내용", content: "{}" }),
+      service.edit(note.id, { plainText: "내용" }),
       service.edit(note.id, { color: "pink" }),
       service.edit(note.id, { pinned: true }),
     ]);

@@ -1,4 +1,4 @@
-import Database from "@tauri-apps/plugin-sql";
+import type Database from "@tauri-apps/plugin-sql";
 import type { Note, NoteColor, NoteFilter } from "../../domain/note";
 import type { NoteRepository } from "../../domain/repository";
 
@@ -41,11 +41,7 @@ const toNote = (row: NoteRow): Note => ({
 });
 
 export class SqliteNoteRepository implements NoteRepository {
-  private constructor(private readonly db: Database) {}
-
-  static async open(): Promise<SqliteNoteRepository> {
-    return new SqliteNoteRepository(await Database.load(DB_URL));
-  }
+  constructor(private readonly db: Database) {}
 
   async list(filter: NoteFilter): Promise<Note[]> {
     const where: string[] = [];

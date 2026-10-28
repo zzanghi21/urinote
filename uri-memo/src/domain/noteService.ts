@@ -1,3 +1,4 @@
+import type { DocStore } from "./docStore";
 import {
   newNote,
   titleFromText,
@@ -6,15 +7,19 @@ import {
   type NoteColor,
   type NoteFilter,
 } from "./note";
+import { legacyContentToUpdate } from "./noteDoc";
 import type { NoteRepository } from "./repository";
 
-export type NoteEdit = Partial<
-  Pick<Note, "content" | "plainText" | "color" | "pinned" | "folderId">
->;
+/** 본문은 Yjs 문서로 따로 저장하므로, 여기서는 목록·검색용 텍스트 캐시와 개인 메타데이터만 바꾼다 */
+export type NoteEdit = Partial<Pick<Note, "plainText" | "color" | "pinned" | "folderId">>;
+
+/** 업데이트 로그가 이 건수를 넘는 문서를 스냅샷으로 합친다 */
+export const LOCAL_COMPACT_THRESHOLD = 50;
 
 export class NoteService {
   constructor(
     private readonly repo: NoteRepository,
+    private readonly docs: DocStore,
     private readonly now: () => number = Date.now,
   ) {}
 
@@ -49,11 +54,14 @@ export class NoteService {
   }
 
   /**
-   * 영구 삭제. 동기화 전(M3)에는 행을 바로 지운다.
+   * 영구 삭제. 동기화 전(M3b)에는 행을 바로 지운다.
    * 동기화 도입 후에는 툼스톤을 서버에 올린 뒤 지우도록 바꾼다.
    */
   deleteForever(id: string) {
-    return this.repo.remove(id);
+    return this.enqueue(async () => {
+      await this.repo.remove(id);
+      await this.docs.remove(id);
+    });
   }
 
   purgeExpiredTrash() {
@@ -71,8 +79,33 @@ export class NoteService {
         return false;
       }
       await this.repo.remove(id);
+      await this.docs.remove(id);
       return true;
     });
+  }
+
+  /**
+   * M1/M2 에서 TipTap JSON 으로 저장한 본문을 Yjs 문서로 옮긴다.
+   * 같은 메모를 두 번 변환하면 내용이 중복되므로, 스티키 창을 열기 전에 Hub 에서 한 번만 실행한다.
+   */
+  migrateLegacyContent(): Promise<number> {
+    return this.enqueue(async () => {
+      const notes = [
+        ...(await this.repo.list({ view: "all" })),
+        ...(await this.repo.list({ view: "trash" })),
+      ].filter((note) => note.content !== "");
+      for (const note of notes) {
+        const existing = await this.docs.load(note.id);
+        const update = existing.length === 0 ? legacyContentToUpdate(note.content) : null;
+        if (update) await this.docs.append(note.id, update, "local");
+        await this.repo.upsert({ ...note, content: "" });
+      }
+      return notes.length;
+    });
+  }
+
+  compactDocs(threshold = LOCAL_COMPACT_THRESHOLD) {
+    return this.docs.compact(threshold);
   }
 
   /** 읽기-수정-쓰기가 서로 끼어들어 변경이 유실되지 않도록 변경을 한 줄로 실행한다 */

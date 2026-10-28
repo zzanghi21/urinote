@@ -7,7 +7,6 @@ import { useNotes, useSelectedNote } from "./notesStore";
 
 export function EditorPane() {
   const note = useSelectedNote();
-  const editorRev = useNotes((s) => s.editorRev);
   const { select, edit, trash, restore, deleteForever } = useNotes.getState();
 
   if (!note) {
@@ -89,8 +88,8 @@ export function EditorPane() {
       </header>
 
       <NoteEditor
-        key={`${note.id}:${editorRev}`}
-        note={note}
+        key={note.id}
+        noteId={note.id}
         readOnly={inTrash}
         onSave={(changes) => edit(note.id, changes)}
       />

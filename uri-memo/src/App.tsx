@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { openNoteRepository } from "./data";
+import { openStores } from "./data";
 import { NoteService } from "./domain/noteService";
 import { EditorPane } from "./features/notes/EditorPane";
 import { useNotes } from "./features/notes/notesStore";
@@ -11,6 +11,7 @@ import "./App.css";
 
 /** App.css 의 2단 레이아웃 기준과 같아야 한다 */
 const TWO_PANE_QUERY = "(min-width: 720px)";
+const COMPACT_INTERVAL_MS = 5 * 60 * 1000;
 
 function App() {
   const ready = useNotes((s) => s.ready);
@@ -22,9 +23,11 @@ function App() {
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    openNoteRepository()
-      .then((repo) =>
-        useNotes.getState().init(new NoteService(repo), window.matchMedia(TWO_PANE_QUERY).matches),
+    openStores()
+      .then(({ notes, docs }) =>
+        useNotes
+          .getState()
+          .init(new NoteService(notes, docs), window.matchMedia(TWO_PANE_QUERY).matches),
       )
       .then(() => (isDesktopApp ? restoreOpenStickies() : undefined))
       .catch((e: unknown) => setError(String(e)));
@@ -33,11 +36,22 @@ function App() {
   // 스티키 창의 변경 반영, 트레이·전역 단축키의 "새 메모"
   useEffect(() => {
     if (!ready) return;
-    const unlistenChange = onNoteChangedElsewhere((id) => void useNotes.getState().onExternalChange(id));
-    const unlistenNew = onAppEvent("app://new-sticky", () => void useNotes.getState().createSticky());
+    const unlistenChange = onNoteChangedElsewhere(
+      () => void useNotes.getState().onExternalChange(),
+    );
+    const unlistenNew = onAppEvent(
+      "app://new-sticky",
+      () => void useNotes.getState().createSticky(),
+    );
+    // 문서 업데이트 로그 압축은 Hub 창 한 곳에서만 한다
+    const compactTimer = window.setInterval(
+      () => void useNotes.getState().service?.compactDocs(),
+      COMPACT_INTERVAL_MS,
+    );
     return () => {
       unlistenChange();
       unlistenNew();
+      window.clearInterval(compactTimer);
     };
   }, [ready]);
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { ColorPicker } from "../../components/ColorPicker";
-import { openNoteRepository } from "../../data";
+import { openStores } from "../../data";
 import {
   defaultStickyState,
   StickyWindowRepository,
@@ -11,7 +11,8 @@ import type { Note } from "../../domain/note";
 import { NoteService, type NoteEdit } from "../../domain/noteService";
 import { emitNoteChanged, onNoteChangedElsewhere } from "../../platform/events";
 import { openSticky, showHub, STICKY_COLLAPSED_HEIGHT } from "../../platform/stickyWindows";
-import { flushPendingEdit, isEditorFocused } from "../notes/editorFlush";
+import { flushAllDocs } from "../notes/docSession";
+import { flushPendingEdit } from "../notes/editorFlush";
 import { NoteEditor } from "../notes/NoteEditor";
 import "./sticky.css";
 
@@ -29,7 +30,6 @@ export function StickyApp({ noteId }: { noteId: string }) {
   const [note, setNote] = useState<Note | null>(null);
   const [win, setWin] = useState<StickyWindowState>(() => defaultStickyState(noteId));
   const [menuOpen, setMenuOpen] = useState(false);
-  const [editorRev, setEditorRev] = useState(0);
   const collapsed = useRef(false);
 
   const updateWindow = (patch: WindowPatch) => {
@@ -40,7 +40,8 @@ export function StickyApp({ noteId }: { noteId: string }) {
 
   useEffect(() => {
     void (async () => {
-      const svc = new NoteService(await openNoteRepository());
+      const { notes, docs } = await openStores();
+      const svc = new NoteService(notes, docs);
       const loaded = await svc.get(noteId);
       if (!loaded || loaded.deletedAt !== null) {
         await appWindow.close();
@@ -58,6 +59,7 @@ export function StickyApp({ noteId }: { noteId: string }) {
   useEffect(() => {
     const unlisten = appWindow.onCloseRequested(async () => {
       flushPendingEdit();
+      await flushAllDocs();
       await (await stickyRepo()).update(noteId, { isOpen: false });
       if (service && (await service.discardIfEmpty(noteId))) emitNoteChanged(noteId);
     });
@@ -89,7 +91,7 @@ export function StickyApp({ noteId }: { noteId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- updateWindow 는 noteId 에만 의존
   }, [noteId]);
 
-  // Hub 나 다른 창에서 바뀐 내용 반영. 휴지통으로 가면 창을 닫는다.
+  // Hub 나 다른 창에서 바뀐 색상 등 반영 (본문은 docSession 이 실시간 병합). 휴지통으로 가면 창을 닫는다.
   useEffect(() => {
     if (!service) return;
     return onNoteChangedElsewhere(async (id) => {
@@ -100,7 +102,6 @@ export function StickyApp({ noteId }: { noteId: string }) {
         return;
       }
       setNote(latest);
-      if (!isEditorFocused()) setEditorRev((r) => r + 1);
     });
   }, [noteId, service]);
 
@@ -224,8 +225,7 @@ export function StickyApp({ noteId }: { noteId: string }) {
       {!win.collapsed && (
         <div className="sticky-body" onMouseDown={() => setMenuOpen(false)}>
           <NoteEditor
-            key={editorRev}
-            note={note}
+            noteId={noteId}
             autoFocus={note.plainText === ""}
             onSave={(changes) => void edit(changes)}
           />

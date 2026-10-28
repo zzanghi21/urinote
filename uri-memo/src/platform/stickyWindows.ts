@@ -56,7 +56,9 @@ export async function openSticky(noteId: string, options: OpenStickyOptions = {}
     alwaysOnTop: state.alwaysOnTop,
     focus: options.focus ?? true,
   });
-  void sticky.once("tauri://error", (e) => console.error("sticky window failed", noteId, e.payload));
+  void sticky.once("tauri://error", (e) =>
+    console.error("sticky window failed", noteId, e.payload),
+  );
 }
 
 /** 앱 시작 시 지난번에 열려 있던 스티키를 모두 복원한다 */

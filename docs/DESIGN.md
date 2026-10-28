@@ -228,6 +228,7 @@ ALTER TABLE notes ADD COLUMN space_id TEXT;         -- 문서가 속한 공간 (
 CREATE TABLE note_docs (
   note_id     TEXT PRIMARY KEY,
   snapshot    TEXT NOT NULL,                        -- base64(Y.encodeStateAsUpdate)
+  synced_sv   TEXT,                                 -- base64(서버가 가진 상태 벡터) → Push 할 차분 계산
   updated_at  INTEGER NOT NULL
 );
 CREATE TABLE note_doc_updates (                     -- 추가 전용(append-only) → 여러 창이 동시에 써도 유실 없음
@@ -235,11 +236,10 @@ CREATE TABLE note_doc_updates (                     -- 추가 전용(append-only
   note_id     TEXT NOT NULL,
   data        TEXT NOT NULL,                        -- base64(Yjs 업데이트)
   origin      TEXT NOT NULL,                        -- 'local' | 'remote'
-  pushed      INTEGER NOT NULL DEFAULT 0,           -- 서버 업로드 여부 (= Push 대기열)
   created_at  INTEGER NOT NULL
 );
 CREATE INDEX idx_doc_updates_note ON note_doc_updates (note_id, seq);
-CREATE INDEX idx_doc_updates_unpushed ON note_doc_updates (pushed, seq);
+-- 메모 행을 지우면 트리거로 문서·로그도 지운다
 
 -- v1.1 공유
 CREATE TABLE spaces (
@@ -251,7 +251,7 @@ CREATE TABLE spaces (
 
 - **문서 읽기**: `snapshot` + 그 뒤의 `note_doc_updates`를 순서대로 적용
 - **문서 쓰기**: 업데이트 1건을 `note_doc_updates`에 INSERT만 한다 (읽고-수정-쓰기 없음)
-- **압축**: Hub 창이 유휴 시, 업로드가 끝난 업데이트가 50건을 넘는 문서를 스냅샷에 합치고 로그를 지운다 (압축은 Hub 한 곳에서만)
+- **압축**: Hub 창이 시작 시·5분마다, 로그가 50건을 넘는 문서를 스냅샷에 합치고 로그를 지운다 (압축은 Hub 한 곳에서만). 업로드 여부는 `synced_sv`로 판단하므로 압축과 무관하다
 - **기존 메모 변환**: M3 첫 실행 시 `content`(TipTap JSON)를 `y-prosemirror`로 Yjs 문서로 바꿔 스냅샷에 저장
 
 **서버 (Supabase / Postgres)**
@@ -315,9 +315,9 @@ create policy "editors write" on doc_updates for insert
 **방식**: 오프라인 우선 + **본문은 Yjs 업데이트 교환(CRDT)**, 메타데이터는 행 단위 LWW. 충돌 사본은 없다.
 
 **본문 (Yjs)**
-1. **로컬 편집**: 편집기 → Yjs 업데이트 발생 → `note_doc_updates`에 INSERT (`origin='local'`, `pushed=0`) → `doc:update` 이벤트로 같은 PC의 다른 창에 즉시 전달 → 제목·텍스트 캐시 갱신 (500ms 디바운스)
-2. **Push** (2초 디바운스 / 온라인 복귀 시): 메모별로 `pushed=0` 업데이트를 `Y.mergeUpdates`로 묶어 `doc_updates`에 INSERT → 성공 시 `pushed=1`
-3. **Pull**: `seq > last_seq` 인 내 공간들의 업데이트를 받아 문서에 적용 (`origin='remote'`, `pushed=1`) → 열린 창에 `doc:update` 전달 → 캐시 재계산 → `last_seq` 갱신
+1. **로컬 편집**: 편집기 → Yjs 업데이트 (200ms 묶음) → `note_doc_updates`에 INSERT (`origin='local'`) → 저장 후 `doc:update` 이벤트로 같은 PC의 다른 창에 전달 → 제목·텍스트 캐시 갱신 (500ms 디바운스)
+2. **Push** (2초 디바운스 / 온라인 복귀 시): 메모별로 `Y.encodeStateAsUpdate(doc, synced_sv)`로 서버에 없는 차분만 만들어 `doc_updates`에 INSERT → 성공 시 `synced_sv` 갱신
+3. **Pull**: `seq > last_seq` 인 내 공간들의 업데이트를 받아 문서에 적용 (`origin='remote'`, `synced_sv`에도 반영) → 열린 창에 `doc:update` 전달 → 캐시 재계산 → `last_seq` 갱신
    - Yjs 업데이트는 **멱등·순서 무관**이라 중복 수신이나 순서 뒤바뀜이 있어도 결과가 같다
 4. **Realtime**: `doc_updates` INSERT 구독 → 즉시 Pull
 5. **새 기기**: `doc_snapshots` + 그 이후 `doc_updates`만 받는다
@@ -509,7 +509,7 @@ invites (id uuid pk, space_id, role, encrypted_key bytea, expires_at, max_uses, 
 | **M0. 환경 구성** ✅ | 1주차 | Rust/Tauri 2 설치, React+TS+Vite, ESLint/Prettier, Git, CI | 데스크톱 빈 앱 실행 (Android 검증은 M4로 이동) |
 | **M1. 로컬 메모** ✅ | 2~3주차 | SQLite 마이그레이션, LocalRepo, NoteService, Hub 목록, TipTap 편집기, 자동 저장, 색상, 핀, FTS 검색, 휴지통 | 오프라인 CRUD·검색 동작, 단위 테스트 통과 |
 | **M2. 스티키 창** ✅ | 4~5주차 | 멀티 윈도우, 창 상태 저장/복원, 항상 위·투명도·접기, 트레이, 전역 단축키, 자동 실행, 창 간 이벤트 동기화 | 재부팅 후 스티키 창 원위치 복원 |
-| **M3a. Yjs 전환 (로컬)** | 6주차 | `0002_yjs.sql`, 문서 저장소(스냅샷 + 업데이트 로그), TipTap Collaboration 바인딩, 창 간 `doc:update` 실시간 병합, 기존 메모 변환, 로컬 압축 | Hub·스티키 동시 편집 병합, 기존 메모 무손실 변환 |
+| **M3a. Yjs 전환 (로컬)** ✅ | 6주차 | `0002_yjs.sql`, 문서 저장소(스냅샷 + 업데이트 로그), TipTap Collaboration 바인딩, 창 간 `doc:update` 실시간 병합, 기존 메모 변환, 로컬 압축 | Hub·스티키 동시 편집 병합, 기존 메모 무손실 변환 |
 | **M3b. 계정·동기화** | 7~9주차 | Supabase 스키마·RLS, Auth(이메일/Google, 딥링크), SyncEngine(문서 업데이트 Push/Pull/Realtime, 메타 LWW), 서버 스냅샷 압축, 상태 표시 | 두 PC 오프라인 동시 편집 후 자동 병합, 3초 내 반영 |
 | **M4. 모바일** | 10~11주차 | Android 빌드, 모바일 레이아웃, 편집기 터치 최적화, 공유 받기, 보안 저장소 | 폰↔PC 동기화 실기기 검증 |
 | **M5. 알림·폴더·설정** | 12주차 | 알림 예약/놓친 알림, 폴더 관리, 테마/글꼴, JSON 내보내기·가져오기, i18n | 알림 정시 표시, 설정 유지 |

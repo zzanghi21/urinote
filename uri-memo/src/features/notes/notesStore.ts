@@ -4,7 +4,7 @@ import type { NoteEdit, NoteService } from "../../domain/noteService";
 import { isDesktopApp } from "../../platform/env";
 import { emitNoteChanged } from "../../platform/events";
 import { forgetSticky, isStickyOpen, openSticky } from "../../platform/stickyWindows";
-import { flushPendingEdit, isEditorFocused } from "./editorFlush";
+import { flushPendingEdit } from "./editorFlush";
 
 interface NotesState {
   service: NoteService | null;
@@ -12,8 +12,6 @@ interface NotesState {
   view: NoteView;
   query: string;
   selectedId: string | null;
-  /** 다른 창에서 선택 메모가 바뀌면 증가한다. 편집기를 다시 마운트해 최신 내용을 보여 준다. */
-  editorRev: number;
   ready: boolean;
 
   /** selectFirst: 2단 화면(데스크톱)에서 첫 메모를 바로 연다 */
@@ -30,8 +28,8 @@ interface NotesState {
   restore(id: string): Promise<void>;
   deleteForever(id: string): Promise<void>;
   refresh(): Promise<void>;
-  /** 다른 창(스티키)에서 메모가 바뀌었을 때 */
-  onExternalChange(id: string): Promise<void>;
+  /** 다른 창(스티키)에서 메모 메타데이터·캐시가 바뀌었을 때. 본문은 docSession 이 실시간 병합한다. */
+  onExternalChange(): Promise<void>;
 }
 
 const SEARCH_DEBOUNCE_MS = 150;
@@ -51,12 +49,13 @@ export const useNotes = create<NotesState>((set, get) => {
     view: "all",
     query: "",
     selectedId: null,
-    editorRev: 0,
     ready: false,
 
     async init(svc, selectFirst = false) {
       set({ service: svc });
+      await svc.migrateLegacyContent();
       await svc.purgeExpiredTrash();
+      await svc.compactDocs();
       await get().refresh();
       set({ ready: true, selectedId: selectFirst ? (get().notes[0]?.id ?? null) : null });
     },
@@ -125,11 +124,8 @@ export const useNotes = create<NotesState>((set, get) => {
       await afterRemoval(id);
     },
 
-    async onExternalChange(id) {
+    async onExternalChange() {
       await get().refresh();
-      if (id === get().selectedId && !isEditorFocused()) {
-        set((s) => ({ editorRev: s.editorRev + 1 }));
-      }
     },
   };
 
