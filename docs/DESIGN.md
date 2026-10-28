@@ -155,33 +155,36 @@ Urinote는 PC 바탕화면에 포스트잇처럼 붙여 두는 **스티키 메�
 ### 4.3 프로젝트 구조
 
 ```
-urinote/
-├─ src/                         # 프런트엔드 (공통)
-│  ├─ app/                      # 라우팅, 창 종류별 진입점 (hub, sticky, settings)
-│  ├─ components/               # 공통 UI (ColorPicker, NoteCard, Toolbar ...)
-│  ├─ features/
-│  │  ├─ notes/                 # 목록, 편집기, 검색
-│  │  ├─ sticky/                # 스티키 창 전용 UI
-│  │  ├─ folders/
-│  │  ├─ reminders/
-│  │  ├─ auth/
-│  │  └─ settings/
-│  ├─ domain/                   # 엔티티, 서비스, Repository 인터페이스
-│  ├─ data/
-│  │  ├─ local/                 # SQLite 리포지토리, 마이그레이션
-│  │  └─ sync/                  # SyncEngine, Supabase 클라이언트
-│  ├─ platform/                 # desktop.ts / mobile.ts (인터페이스 구현)
-│  ├─ i18n/                     # ko.json, en.json
-│  └─ styles/                   # 테마 변수
-├─ src-tauri/                   # Rust (창 관리, 트레이, 플러그인 설정)
-│  ├─ src/
-│  ├─ capabilities/             # 권한 설정
-│  └─ tauri.conf.json
-├─ supabase/
-│  ├─ migrations/               # 테이블, RLS 정책
-│  └─ functions/                # (선택) 정리 작업 등 Edge Function
-├─ tests/                       # E2E
-└─ docs/                        # 설계 문서
+memo-app/                       # 저장소 루트
+├─ docs/                        # 설계 문서
+├─ .github/workflows/           # CI
+└─ uri-memo/                    # 앱 소스 (npm/tauri 명령은 여기서 실행)
+   ├─ src/                      # 프런트엔드 (공통)
+   │  ├─ app/                   # 라우팅, 창 종류별 진입점 (hub, sticky, settings)
+   │  ├─ components/            # 공통 UI (ColorPicker, NoteCard, Toolbar ...)
+   │  ├─ features/
+   │  │  ├─ notes/              # 목록, 편집기, 검색
+   │  │  ├─ sticky/             # 스티키 창 전용 UI
+   │  │  ├─ folders/
+   │  │  ├─ reminders/
+   │  │  ├─ auth/
+   │  │  └─ settings/
+   │  ├─ domain/                # 엔티티, 서비스, Repository 인터페이스
+   │  ├─ data/
+   │  │  ├─ local/              # SQLite / 메모리 리포지토리
+   │  │  └─ sync/               # SyncEngine, Supabase 클라이언트
+   │  ├─ platform/              # desktop.ts / mobile.ts (인터페이스 구현)
+   │  ├─ i18n/                  # ko.json, en.json
+   │  └─ styles/                # 테마 변수
+   ├─ src-tauri/                # Rust (창 관리, 트레이, 플러그인 설정)
+   │  ├─ src/
+   │  ├─ migrations/            # SQLite 스키마
+   │  ├─ capabilities/          # 권한 설정
+   │  └─ tauri.conf.json
+   ├─ supabase/
+   │  ├─ migrations/            # 테이블, RLS 정책
+   │  └─ functions/             # (선택) 정리 작업 등 Edge Function
+   └─ tests/                    # E2E
 ```
 
 ### 4.4 데이터 모델

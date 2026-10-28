@@ -1,0 +1,52 @@
+import { previewFromText } from "../../domain/note";
+import { formatNoteTime } from "./formatTime";
+import { useNotes } from "./notesStore";
+
+export function NoteList() {
+  const notes = useNotes((s) => s.notes);
+  const view = useNotes((s) => s.view);
+  const query = useNotes((s) => s.query);
+  const selectedId = useNotes((s) => s.selectedId);
+  const select = useNotes((s) => s.select);
+
+  if (notes.length === 0) {
+    const message = query
+      ? `"${query}"에 대한 검색 결과가 없습니다.`
+      : view === "trash"
+        ? "휴지통이 비어 있습니다."
+        : view === "pinned"
+          ? "고정한 메모가 없습니다."
+          : "메모가 없습니다.\n+ 버튼으로 새 메모를 만드세요.";
+    return <p className="note-list-empty">{message}</p>;
+  }
+
+  return (
+    <ul className="note-list" aria-label="메모 목록">
+      {notes.map((note) => (
+        <li key={note.id}>
+          <button
+            type="button"
+            className={`note-card color-${note.color}${note.id === selectedId ? " selected" : ""}`}
+            onClick={() => select(note.id)}
+            aria-current={note.id === selectedId}
+          >
+            <span className="note-card-head">
+              <span className="note-card-title">{note.title || "새 메모"}</span>
+              {note.pinned && (
+                <span className="note-card-pin" aria-label="고정됨">
+                  📌
+                </span>
+              )}
+            </span>
+            <span className="note-card-preview">{previewFromText(note.plainText)}</span>
+            <span className="note-card-time">
+              {formatNoteTime(
+                view === "trash" ? (note.deletedAt ?? note.updatedAt) : note.updatedAt,
+              )}
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}

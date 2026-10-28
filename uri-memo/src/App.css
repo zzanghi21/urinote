@@ -1,0 +1,506 @@
+:root {
+  --bg: #f6f5f2;
+  --surface: #ffffff;
+  --text: #2b2a27;
+  --text-muted: #7a776f;
+  --border: #e4e1da;
+  --accent: #e0a800;
+  --danger: #d1453b;
+  --radius: 10px;
+
+  /* 메모 색상: 배경 / 강조(띠·선택) */
+  --note-yellow: #fff6c2;
+  --note-yellow-accent: #f2c500;
+  --note-green: #dff5d0;
+  --note-green-accent: #6cc04a;
+  --note-pink: #ffdbe9;
+  --note-pink-accent: #f06a9b;
+  --note-purple: #e9ddff;
+  --note-purple-accent: #9b72f2;
+  --note-blue: #d7edff;
+  --note-blue-accent: #4a9eea;
+  --note-gray: #ececea;
+  --note-gray-accent: #9a9893;
+  --note-charcoal: #4a4946;
+  --note-charcoal-accent: #2b2a27;
+  --note-charcoal-text: #f4f3ef;
+
+  font-family:
+    "Pretendard",
+    "Apple SD Gothic Neo",
+    "Malgun Gothic",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1e;
+    --surface: #252527;
+    --text: #ecebe8;
+    --text-muted: #9c9a94;
+    --border: #3a3a3c;
+    --accent: #f2c500;
+
+    --note-yellow: #4a4223;
+    --note-green: #2f4229;
+    --note-pink: #4a2c38;
+    --note-purple: #3a3150;
+    --note-blue: #263b4d;
+    --note-gray: #3a3a3a;
+    --note-charcoal: #151515;
+    --note-charcoal-text: #ecebe8;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- 메모 색상 ---------- */
+.color-yellow {
+  --note-bg: var(--note-yellow);
+  --note-accent: var(--note-yellow-accent);
+}
+.color-green {
+  --note-bg: var(--note-green);
+  --note-accent: var(--note-green-accent);
+}
+.color-pink {
+  --note-bg: var(--note-pink);
+  --note-accent: var(--note-pink-accent);
+}
+.color-purple {
+  --note-bg: var(--note-purple);
+  --note-accent: var(--note-purple-accent);
+}
+.color-blue {
+  --note-bg: var(--note-blue);
+  --note-accent: var(--note-blue-accent);
+}
+.color-gray {
+  --note-bg: var(--note-gray);
+  --note-accent: var(--note-gray-accent);
+}
+.color-charcoal {
+  --note-bg: var(--note-charcoal);
+  --note-accent: var(--note-charcoal-accent);
+  --note-text: var(--note-charcoal-text);
+}
+
+/* ---------- 레이아웃 ---------- */
+.app {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  height: 100%;
+}
+
+.app-message {
+  display: grid;
+  place-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.app-message pre {
+  max-width: 80vw;
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+
+/* ---------- 사이드바 ---------- */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding-top: env(safe-area-inset-top);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 8px;
+}
+
+.brand {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.new-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #2b2a27;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.new-btn:hover {
+  filter: brightness(1.05);
+}
+
+.search {
+  margin: 4px 16px 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.view-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 12px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.view-tab {
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.view-tab.active {
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ---------- 메모 목록 ---------- */
+.note-list {
+  flex: 1;
+  margin: 0;
+  padding: 8px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.note-list-empty {
+  flex: 1;
+  margin: 0;
+  padding: 32px 16px;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: pre-line;
+}
+
+.note-card {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 10px 12px 10px 14px;
+  border-left: 4px solid var(--note-accent);
+  border-radius: var(--radius);
+  background: var(--note-bg);
+  color: var(--note-text, var(--text));
+  text-align: left;
+}
+
+.note-card:hover {
+  filter: brightness(0.98);
+}
+
+.note-card.selected {
+  box-shadow: 0 0 0 2px var(--note-accent);
+}
+
+.note-card-head {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.note-card-title {
+  flex: 1;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-card-pin {
+  font-size: 12px;
+}
+
+.note-card-preview {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 13px;
+  opacity: 0.8;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.note-card-preview:empty {
+  display: none;
+}
+
+.note-card-time {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+/* ---------- 편집 패널 ---------- */
+.editor-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--note-bg, var(--bg));
+  color: var(--note-text, var(--text));
+  padding-top: env(safe-area-inset-top);
+}
+
+.editor-pane.empty {
+  display: grid;
+  place-content: center;
+  color: var(--text-muted);
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 4px solid var(--note-accent);
+}
+
+.editor-actions {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.editor-meta {
+  flex: 1;
+  overflow: hidden;
+  font-size: 12px;
+  opacity: 0.65;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-btn {
+  display: grid;
+  place-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 16px;
+  opacity: 0.6;
+}
+
+.icon-btn:hover,
+.icon-btn.active {
+  background: rgb(0 0 0 / 0.06);
+  opacity: 1;
+}
+
+.back-btn {
+  display: none;
+  font-size: 26px;
+}
+
+.text-btn {
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgb(0 0 0 / 0.06);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.text-btn.danger {
+  color: var(--danger);
+}
+
+.color-picker {
+  display: flex;
+  gap: 4px;
+}
+
+.color-swatch {
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgb(0 0 0 / 0.15);
+  border-radius: 50%;
+  background: var(--note-bg);
+}
+
+.color-swatch[aria-checked="true"] {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--note-accent);
+}
+
+/* ---------- 편집기 ---------- */
+.note-editor {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.note-editor-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 24px 24px;
+}
+
+.note-editor-content {
+  min-height: 100%;
+  outline: none;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.note-editor-content > :first-child {
+  margin-top: 0;
+}
+
+.note-editor-content p {
+  margin: 0 0 4px;
+}
+
+.note-editor-content p.is-editor-empty:first-child::before {
+  content: "메모를 입력하세요";
+  float: left;
+  height: 0;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.note-editor-content ul[data-type="taskList"] {
+  padding-left: 2px;
+  list-style: none;
+}
+
+.note-editor-content ul[data-type="taskList"] li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.note-editor-content ul[data-type="taskList"] li > label {
+  margin-top: 3px;
+}
+
+.note-editor-content ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+
+.note-editor-content ul[data-type="taskList"] li[data-checked="true"] > div {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.toolbar {
+  display: flex;
+  gap: 2px;
+  padding: 6px 12px calc(6px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgb(0 0 0 / 0.08);
+}
+
+.toolbar-btn {
+  min-width: 34px;
+  height: 32px;
+  border-radius: 8px;
+  opacity: 0.7;
+}
+
+.toolbar-btn:hover,
+.toolbar-btn.active {
+  background: rgb(0 0 0 / 0.08);
+  opacity: 1;
+}
+
+.toolbar-bold {
+  font-weight: 700;
+}
+.toolbar-italic {
+  font-style: italic;
+}
+.toolbar-underline {
+  text-decoration: underline;
+}
+.toolbar-strike {
+  text-decoration: line-through;
+}
+
+/* ---------- 모바일 (1단) ---------- */
+@media (max-width: 719px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: none;
+  }
+
+  .app .editor-pane {
+    display: none;
+  }
+
+  .app.has-selection .sidebar {
+    display: none;
+  }
+
+  .app.has-selection .editor-pane {
+    display: flex;
+  }
+
+  .back-btn {
+    display: grid;
+  }
+
+  .note-editor-body {
+    padding: 8px 16px 16px;
+  }
+
+  .editor-meta {
+    display: none;
+  }
+}

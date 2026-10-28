@@ -4,6 +4,7 @@
 데스크톱(Windows/macOS) 스티키 메모 + 모바일(Android/iOS) 동기화 메모 앱.
 
 - 설계 및 개발 계획: [docs/DESIGN.md](docs/DESIGN.md)
+- 앱 소스: [uri-memo/](uri-memo/)
 - 스택: Tauri 2 · React 19 · TypeScript · Vite · SQLite · Supabase
 
 ## 개발 환경
@@ -15,6 +16,7 @@
 ## 명령어
 
 ```bash
+cd uri-memo
 npm install
 npm run tauri dev      # 데스크톱 개발 실행
 npm run dev            # 브라우저에서 UI만 실행 (http://localhost:1420)

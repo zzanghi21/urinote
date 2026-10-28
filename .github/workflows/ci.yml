@@ -5,6 +5,10 @@ on:
     branches: [main, develop]
   pull_request:
 
+defaults:
+  run:
+    working-directory: uri-memo
+
 jobs:
   frontend:
     runs-on: ubuntu-latest
@@ -14,9 +18,11 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: uri-memo/package-lock.json
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm test
       - run: npm run build
 
   desktop:
@@ -32,9 +38,10 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: uri-memo/package-lock.json
       - uses: dtolnay/rust-toolchain@stable
       - uses: swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          workspaces: uri-memo/src-tauri
       - run: npm ci
       - run: npm run tauri build -- --debug --no-bundle
