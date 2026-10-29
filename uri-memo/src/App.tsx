@@ -31,6 +31,11 @@ function App() {
       )
       .then(() => (isDesktopApp ? restoreOpenStickies() : undefined))
       .catch((e: unknown) => setError(String(e)));
+    if (isDesktopApp && import.meta.env.VITE_P2P_DEBUG === "1") {
+      void import("./platform/p2pDebug").then((m) =>
+        m.startP2pDebug().catch((e: unknown) => console.error("[p2p] start failed", e)),
+      );
+    }
   }, []);
 
   // 스티키 창의 변경 반영, 트레이·전역 단축키의 "새 메모"

@@ -23,11 +23,19 @@ tauri-plugin-opener = "2"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tokio = { version = "1", features = ["sync", "macros", "rt", "time"] }
+anyhow = "1"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-single-instance = "2"
+# 친구 공유 (같은 Wi-Fi P2P). 모바일 지원은 M4에서 추가
+iroh = "1.4"
+iroh-mdns-address-lookup = "0.6"
+keyring = { version = "3", features = ["windows-native", "apple-native"] }
+n0-future = "0.3"
+base64 = "0.22"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

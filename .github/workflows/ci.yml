@@ -44,4 +44,7 @@ jobs:
         with:
           workspaces: uri-memo/src-tauri
       - run: npm ci
+      - run: npm run build
+      - run: cargo test --lib
+        working-directory: uri-memo/src-tauri
       - run: npm run tauri build -- --debug --no-bundle

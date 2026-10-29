@@ -4,6 +4,8 @@ use tauri_plugin_sql::{Migration, MigrationKind};
 
 #[cfg(desktop)]
 mod desktop;
+#[cfg(desktop)]
+mod p2p;
 
 pub const DB_URL: &str = "sqlite:urinote.db";
 
@@ -31,6 +33,10 @@ pub fn run() {
     // 단일 인스턴스 플러그인은 가장 먼저 등록해야 한다
     #[cfg(desktop)]
     let builder = desktop::plugins(builder);
+
+    // 친구 공유 (같은 Wi-Fi P2P)
+    #[cfg(desktop)]
+    let builder = p2p::init(builder).invoke_handler(p2p::handler());
 
     builder
         .plugin(tauri_plugin_opener::init())
