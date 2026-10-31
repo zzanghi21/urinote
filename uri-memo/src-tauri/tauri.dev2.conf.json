@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Urinote Dev2",
+  "identifier": "com.urinote.dev2",
+  "build": {
+    "beforeDevCommand": "",
+    "devUrl": "http://localhost:1420"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Urinote (테스트 기기 2)",
+        "width": 960,
+        "height": 640,
+        "minWidth": 360,
+        "minHeight": 400,
+        "visible": false
+      }
+    ]
+  }
+}

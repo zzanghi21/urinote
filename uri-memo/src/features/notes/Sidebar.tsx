@@ -1,4 +1,5 @@
 import type { NoteView } from "../../domain/note";
+import { useShare } from "../share/shareStore";
 import { NoteList } from "./NoteList";
 import { useNotes } from "./notesStore";
 
@@ -12,11 +13,23 @@ export function Sidebar({ searchRef }: { searchRef: React.RefObject<HTMLInputEle
   const view = useNotes((s) => s.view);
   const query = useNotes((s) => s.query);
   const { setView, setQuery, create } = useNotes.getState();
+  const shareAvailable = useShare((s) => s.available);
 
   return (
     <aside className="sidebar">
       <header className="sidebar-header">
         <h1 className="brand">Urinote</h1>
+        {shareAvailable && (
+          <button
+            type="button"
+            className="icon-btn friends-btn"
+            onClick={() => useShare.getState().openDialog()}
+            title="친구 (같은 Wi-Fi 공유)"
+            aria-label="친구"
+          >
+            👥
+          </button>
+        )}
         <button
           type="button"
           className="new-btn"

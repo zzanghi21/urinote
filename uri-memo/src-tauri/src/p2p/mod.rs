@@ -14,7 +14,8 @@ use tokio::sync::{mpsc, OnceCell};
 
 use node::{Node, NodeEvent, NodeOptions};
 
-const KEYRING_SERVICE: &str = "com.urinote.app";
+/// 보안 저장소 항목 이름. 서비스 이름은 앱 identifier 를 써서, 테스트용 두 번째 인스턴스
+/// (tauri.dev2.conf.json) 가 다른 기기 키를 갖게 한다.
 const KEYRING_USER: &str = "p2p-device-key";
 
 /// Hub 창의 ShareEngine 이 받는 이벤트
@@ -58,8 +59,8 @@ fn node<'a>(state: &'a State<'_, P2pState>) -> Result<&'a Node> {
 }
 
 /// 기기 비밀키를 OS 보안 저장소(Windows 자격 증명 관리자 / macOS 키체인)에서 읽거나 처음이면 만든다.
-fn device_key() -> Result<SecretKey> {
-    let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)?;
+fn device_key(service: &str) -> Result<SecretKey> {
+    let entry = keyring::Entry::new(service, KEYRING_USER)?;
     match entry.get_password() {
         Ok(hex) => {
             let bytes: [u8; 32] = decode_hex(&hex)
@@ -130,7 +131,8 @@ async fn p2p_start<R: Runtime>(
         .node
         .get_or_try_init(|| async {
             let (tx, rx) = mpsc::unbounded_channel();
-            let node = Node::start(device_key()?, NodeOptions::default(), tx).await?;
+            let service = app.config().identifier.clone();
+            let node = Node::start(device_key(&service)?, NodeOptions::default(), tx).await?;
             forward_events(app.clone(), rx);
             anyhow::Ok(node)
         })
@@ -161,12 +163,22 @@ async fn p2p_connect(state: State<'_, P2pState>, peer: String) -> CmdResult<()> 
     node(&state).map_err(err)?.connect(id).await.map_err(err)
 }
 
-/// QR 로 받은 주소(JSON)로 직접 연결 (mDNS 가 막힌 네트워크용)
+/// 연결 코드로 받은 주소(JSON)로 직접 연결하고 상대 기기 ID 를 돌려준다 (mDNS 가 막힌 네트워크용)
 #[tauri::command]
-async fn p2p_connect_addr(state: State<'_, P2pState>, addr: String) -> CmdResult<()> {
+async fn p2p_connect_addr(state: State<'_, P2pState>, addr: String) -> CmdResult<String> {
     let addr: EndpointAddr =
         serde_json::from_str(&addr).map_err(|e| format!("잘못된 연결 정보: {e}"))?;
-    node(&state).map_err(err)?.connect(addr).await.map_err(err)
+    let id = addr.id;
+    node(&state).map_err(err)?.connect(addr).await.map_err(err)?;
+    Ok(id.to_string())
+}
+
+/// 기기 표시 이름 기본값 (PC 이름)
+#[tauri::command]
+fn p2p_default_name() -> String {
+    std::env::var("COMPUTERNAME")
+        .or_else(|_| std::env::var("HOSTNAME"))
+        .unwrap_or_else(|_| "Urinote".to_string())
 }
 
 /// QR 로 보여 줄 내 연결 정보 (JSON)
@@ -222,6 +234,7 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         p2p_set_pairing,
         p2p_connect,
         p2p_connect_addr,
+        p2p_default_name,
         p2p_my_addr,
         p2p_send,
         p2p_disconnect,

@@ -38,9 +38,14 @@ export function connectPeer(peer: string): Promise<void> {
   return invoke("p2p_connect", { peer });
 }
 
-/** QR 로 받은 연결 정보로 직접 연결 */
-export function connectAddr(addr: string): Promise<void> {
+/** 연결 코드로 받은 연결 정보로 직접 연결하고 상대 기기 ID 를 돌려준다 */
+export function connectAddr(addr: string): Promise<string> {
   return invoke("p2p_connect_addr", { addr });
+}
+
+/** 기기 표시 이름 기본값 (PC 이름) */
+export function defaultDeviceName(): Promise<string> {
+  return invoke("p2p_default_name");
 }
 
 /** QR 로 보여 줄 내 연결 정보 */

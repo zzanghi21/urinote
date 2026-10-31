@@ -4,6 +4,8 @@ import { NoteService } from "./domain/noteService";
 import { EditorPane } from "./features/notes/EditorPane";
 import { useNotes } from "./features/notes/notesStore";
 import { Sidebar } from "./features/notes/Sidebar";
+import { FriendsDialog } from "./features/share/FriendsDialog";
+import { useShare } from "./features/share/shareStore";
 import { isDesktopApp } from "./platform/env";
 import { onAppEvent, onNoteChangedElsewhere } from "./platform/events";
 import { restoreOpenStickies } from "./platform/stickyWindows";
@@ -31,11 +33,7 @@ function App() {
       )
       .then(() => (isDesktopApp ? restoreOpenStickies() : undefined))
       .catch((e: unknown) => setError(String(e)));
-    if (isDesktopApp && import.meta.env.VITE_P2P_DEBUG === "1") {
-      void import("./platform/p2pDebug").then((m) =>
-        m.startP2pDebug().catch((e: unknown) => console.error("[p2p] start failed", e)),
-      );
-    }
+    void useShare.getState().init();
   }, []);
 
   // 스티키 창의 변경 반영, 트레이·전역 단축키의 "새 메모"
@@ -92,6 +90,7 @@ function App() {
     <main className={`app${hasSelection ? " has-selection" : ""}`}>
       <Sidebar searchRef={searchRef} />
       <EditorPane />
+      <FriendsDialog />
     </main>
   );
 }
