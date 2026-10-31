@@ -41,9 +41,22 @@ interface DocUpdatePayload {
   source: string;
 }
 
-export function emitDocUpdate(noteId: string, update: string) {
+/** 친구 기기에서 받은 업데이트의 출처 표시. 모든 창(Hub 포함)이 적용한다. */
+export const P2P_SOURCE = "p2p";
+
+export function emitDocUpdate(noteId: string, update: string, source = windowLabel) {
   if (!inTauri) return;
-  void emit(DOC_UPDATE, { noteId, update, source: windowLabel } satisfies DocUpdatePayload);
+  void emit(DOC_UPDATE, { noteId, update, source } satisfies DocUpdatePayload);
+}
+
+/** 모든 창의 본문 업데이트 (공유 엔진이 친구 기기로 보낼 편집을 모은다) */
+export async function onAnyDocUpdate(
+  handler: (noteId: string, update: string, source: string) => void,
+): Promise<() => void> {
+  if (!inTauri) return () => {};
+  return listen<DocUpdatePayload>(DOC_UPDATE, (e) =>
+    handler(e.payload.noteId, e.payload.update, e.payload.source),
+  );
 }
 
 /**

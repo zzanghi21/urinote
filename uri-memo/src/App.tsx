@@ -5,6 +5,7 @@ import { EditorPane } from "./features/notes/EditorPane";
 import { useNotes } from "./features/notes/notesStore";
 import { Sidebar } from "./features/notes/Sidebar";
 import { FriendsDialog } from "./features/share/FriendsDialog";
+import { ShareDialog } from "./features/share/ShareDialog";
 import { useShare } from "./features/share/shareStore";
 import { isDesktopApp } from "./platform/env";
 import { onAppEvent, onNoteChangedElsewhere } from "./platform/events";
@@ -91,6 +92,7 @@ function App() {
       <Sidebar searchRef={searchRef} />
       <EditorPane />
       <FriendsDialog />
+      <ShareDialog />
     </main>
   );
 }

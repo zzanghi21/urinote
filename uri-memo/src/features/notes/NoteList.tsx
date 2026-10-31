@@ -36,6 +36,11 @@ export function NoteList() {
           >
             <span className="note-card-head">
               <span className="note-card-title">{note.title || "새 메모"}</span>
+              {note.spaceId && (
+                <span className="note-card-pin" aria-label="친구와 공유 중" title="친구와 공유 중">
+                  👥
+                </span>
+              )}
               {note.pinned && (
                 <span className="note-card-pin" aria-label="고정됨">
                   📌

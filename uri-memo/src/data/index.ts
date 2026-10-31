@@ -2,6 +2,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import type { DocStore } from "../domain/docStore";
 import type { NoteRepository } from "../domain/repository";
 import type { ContactsRepository } from "./local/contactsRepo";
+import type { SharesRepository } from "./local/sharesRepo";
 import { MemoryDocStore } from "./local/memoryDocStore";
 import { MemoryNoteRepository } from "./local/memoryRepo";
 
@@ -10,6 +11,7 @@ export interface Stores {
   docs: DocStore;
   /** 친구 공유는 Tauri 앱에서만 (브라우저 미리보기에는 없음) */
   contacts: ContactsRepository | null;
+  shares: SharesRepository | null;
 }
 
 let stores: Promise<Stores> | null = null;
@@ -23,23 +25,27 @@ export function openStores(): Promise<Stores> {
         { SqliteNoteRepository, DB_URL },
         { SqliteDocStore },
         { SqliteContactsRepository },
+        { SqliteSharesRepository },
       ] = await Promise.all([
         import("@tauri-apps/plugin-sql"),
         import("./local/sqliteRepo"),
         import("./local/sqliteDocStore"),
         import("./local/contactsRepo"),
+        import("./local/sharesRepo"),
       ]);
       const db = await Database.load(DB_URL);
       return {
         notes: new SqliteNoteRepository(db),
         docs: new SqliteDocStore(db),
         contacts: new SqliteContactsRepository(db),
+        shares: new SqliteSharesRepository(db),
       };
     }
     return {
       notes: new MemoryNoteRepository("urinote:notes"),
       docs: new MemoryDocStore("urinote:docs"),
       contacts: null,
+      shares: null,
     };
   })();
   return stores;

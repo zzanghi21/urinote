@@ -17,6 +17,8 @@ const TITLE_MAX = 100;
 export interface Note {
   id: string;
   folderId: string | null;
+  /** 친구와 공유 중이면 공유 ID (= 메모 ID), 개인 메모면 null */
+  spaceId: string | null;
   /** 본문 첫 줄에서 자동 생성 (목록·검색용) */
   title: string;
   /** TipTap JSON 문자열 */
@@ -45,6 +47,7 @@ export function newNote(overrides: Partial<Note> = {}, now = Date.now()): Note {
   return {
     id: uuidv7(),
     folderId: null,
+    spaceId: null,
     title: "",
     content: "",
     plainText: "",

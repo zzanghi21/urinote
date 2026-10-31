@@ -1,0 +1,293 @@
+import { useState } from "react";
+import { useNotes } from "../notes/notesStore";
+import { MAX_MEMBERS, roleOf, type Member, type ShareRole } from "./membership";
+import { shortDeviceId, useShare } from "./shareStore";
+import type { Invitee } from "./shareEngine";
+import "./share.css";
+
+const ROLE_LABEL: Record<ShareRole, string> = {
+  owner: "소유자",
+  editor: "편집 가능",
+  viewer: "보기 전용",
+};
+
+/** 메모 1개의 공유 설정: 공유 시작 / 멤버 관리(소유자) / 나가기(멤버) */
+export function ShareDialog() {
+  const noteId = useShare((s) => s.shareDialogNoteId);
+  const record = useShare((s) => (noteId ? s.shares[noteId] : undefined));
+  const myId = useShare((s) => s.myId);
+  const error = useShare((s) => s.error);
+  const close = useShare((s) => s.closeShareDialog);
+  const title = useNotes((s) => s.notes.find((n) => n.id === noteId)?.title);
+
+  if (!noteId) return null;
+
+  const active = record?.status === "active";
+  const m = record?.signed.membership;
+  const isOwner = !active || m?.owner === myId;
+
+  return (
+    <div className="dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
+      <section className="dialog" role="dialog" aria-label="메모 공유" aria-modal>
+        <header className="dialog-header">
+          <h2>'{title || "새 메모"}' 공유</h2>
+          <button type="button" className="icon-btn" onClick={close} aria-label="닫기">
+            ×
+          </button>
+        </header>
+        {error && <p className="dialog-error">{error}</p>}
+        <p className="dialog-hint">
+          같은 Wi-Fi에 있는 친구와 함께 편집합니다. 떨어져 있는 동안의 편집은 다시 만나면
+          합쳐집니다.
+        </p>
+
+        {active && m ? (
+          <>
+            <MemberList noteId={noteId} members={m.members} editable={isOwner} myId={myId} />
+            {isOwner && <InvitePicker noteId={noteId} exclude={m.members.map((x) => x.id)} />}
+            <ShareFooter noteId={noteId} isOwner={isOwner} myRole={myId ? roleOf(m, myId) : null} />
+          </>
+        ) : (
+          <InvitePicker noteId={noteId} exclude={[]} />
+        )}
+      </section>
+    </div>
+  );
+}
+
+function MemberList({
+  noteId,
+  members,
+  editable,
+  myId,
+}: {
+  noteId: string;
+  members: Member[];
+  editable: boolean;
+  myId: string | null;
+}) {
+  const connected = useShare((s) => s.connected);
+  const setMembers = useShare((s) => s.setMembers);
+
+  return (
+    <>
+      <h3 className="dialog-section">멤버 {members.length}명</h3>
+      <ul className="peer-list">
+        {members.map((member) => {
+          const isMe = member.id === myId;
+          const online = isMe || connected.includes(member.id);
+          return (
+            <li key={member.id} className="peer-row">
+              <span
+                className={`presence${online ? " online" : ""}`}
+                title={online ? "지금 함께 편집 중" : "떨어져 있음 (만나면 합쳐짐)"}
+              />
+              <span className="peer-name">
+                {member.name}
+                {isMe && " (나)"}
+              </span>
+              <span className="peer-id">{shortDeviceId(member.id)}</span>
+              {editable && member.role !== "owner" ? (
+                <>
+                  <select
+                    value={member.role}
+                    onChange={(e) =>
+                      setMembers(
+                        noteId,
+                        members.map((x) =>
+                          x.id === member.id ? { ...x, role: e.target.value as ShareRole } : x,
+                        ),
+                      )
+                    }
+                    aria-label={`${member.name} 권한`}
+                  >
+                    <option value="editor">{ROLE_LABEL.editor}</option>
+                    <option value="viewer">{ROLE_LABEL.viewer}</option>
+                  </select>
+                  <button
+                    type="button"
+                    className="text-btn danger"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `${member.name}을(를) 공유에서 내보낼까요?\n이미 받아 간 내용은 회수할 수 없습니다.`,
+                        )
+                      ) {
+                        void setMembers(
+                          noteId,
+                          members.filter((x) => x.id !== member.id),
+                        );
+                      }
+                    }}
+                  >
+                    내보내기
+                  </button>
+                </>
+              ) : (
+                <span className="dialog-hint">{ROLE_LABEL[member.role]}</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {editable && (
+        <p className="dialog-hint">
+          권한 변경·내보내기는 그 기기를 다음에 만날 때 적용됩니다. 그 전까지는 이전 권한으로
+          동기화될 수 있습니다.
+        </p>
+      )}
+    </>
+  );
+}
+
+function InvitePicker({ noteId, exclude }: { noteId: string; exclude: string[] }) {
+  const contacts = useShare((s) => s.contacts);
+  const shareNote = useShare((s) => s.shareNote);
+  const openFriends = useShare((s) => s.openDialog);
+  const closeShare = useShare((s) => s.closeShareDialog);
+  const [picked, setPicked] = useState<Record<string, Invitee["role"]>>({});
+
+  const candidates = contacts.filter((c) => !exclude.includes(c.deviceId));
+  const count = Object.keys(picked).length;
+  const remaining = MAX_MEMBERS - Math.max(exclude.length, 1);
+
+  if (contacts.length === 0) {
+    return (
+      <div className="empty-friends">
+        <p>공유하려면 먼저 같은 Wi-Fi에 있는 친구를 등록하세요.</p>
+        <button
+          type="button"
+          className="text-btn primary"
+          onClick={() => {
+            closeShare();
+            void openFriends();
+          }}
+        >
+          친구 추가
+        </button>
+      </div>
+    );
+  }
+  if (candidates.length === 0) return null;
+
+  return (
+    <>
+      <h3 className="dialog-section">{exclude.length ? "친구 초대" : "함께 편집할 친구"}</h3>
+      <ul className="peer-list">
+        {candidates.map((c) => {
+          const checked = c.deviceId in picked;
+          return (
+            <li key={c.deviceId} className="peer-row">
+              <label className="peer-check">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={!checked && count >= remaining}
+                  onChange={(e) =>
+                    setPicked((p) => {
+                      const next = { ...p };
+                      if (e.target.checked) next[c.deviceId] = "editor";
+                      else delete next[c.deviceId];
+                      return next;
+                    })
+                  }
+                />
+                <span className="peer-name">{c.name}</span>
+              </label>
+              <span className="peer-id">{shortDeviceId(c.deviceId)}</span>
+              <select
+                value={picked[c.deviceId] ?? "editor"}
+                disabled={!checked}
+                onChange={(e) =>
+                  setPicked((p) => ({ ...p, [c.deviceId]: e.target.value as Invitee["role"] }))
+                }
+                aria-label={`${c.name} 권한`}
+              >
+                <option value="editor">{ROLE_LABEL.editor}</option>
+                <option value="viewer">{ROLE_LABEL.viewer}</option>
+              </select>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="dialog-actions end">
+        <button
+          type="button"
+          className="text-btn primary"
+          disabled={count === 0}
+          onClick={async () => {
+            const invitees = candidates
+              .filter((c) => c.deviceId in picked)
+              .map((c) => ({ id: c.deviceId, name: c.name, role: picked[c.deviceId] }));
+            await shareNote(noteId, invitees);
+            setPicked({});
+          }}
+        >
+          {exclude.length ? "초대" : "공유"} ({count})
+        </button>
+      </div>
+      <p className="dialog-hint">
+        친구가 같은 Wi-Fi에 없으면 다음에 만날 때 공유 제안이 전달됩니다.
+      </p>
+    </>
+  );
+}
+
+function ShareFooter({
+  noteId,
+  isOwner,
+  myRole,
+}: {
+  noteId: string;
+  isOwner: boolean;
+  myRole: ShareRole | null;
+}) {
+  const { endShare, leaveShare, closeShareDialog } = useShare();
+  return (
+    <div className="dialog-actions end">
+      {!isOwner && myRole && <span className="dialog-hint">내 권한: {ROLE_LABEL[myRole]}</span>}
+      <button
+        type="button"
+        className="text-btn danger"
+        onClick={async () => {
+          const message = isOwner
+            ? "공유를 종료할까요?\n친구들의 메모는 각자의 개인 메모로 남습니다."
+            : "공유에서 나갈까요?\n이 메모는 내 개인 메모로 남고, 이후 변경은 받지 않습니다.";
+          if (!window.confirm(message)) return;
+          await (isOwner ? endShare(noteId) : leaveShare(noteId));
+          closeShareDialog();
+        }}
+      >
+        {isOwner ? "공유 종료" : "공유 나가기"}
+      </button>
+    </div>
+  );
+}
+
+/** 받은 공유 제안 (Hub 목록 위) */
+export function OfferBanner() {
+  const inbox = useShare((s) => s.inbox);
+  const { acceptOffer, declineOffer } = useShare();
+  if (inbox.length === 0) return null;
+  return (
+    <div className="offer-banner" role="status">
+      {inbox.map((offer) => (
+        <div key={offer.noteId} className="offer-row">
+          <span className="offer-text">
+            <b>{offer.fromName}</b>님이 '{offer.title || "새 메모"}'을(를) 공유했습니다
+          </span>
+          <button type="button" className="text-btn" onClick={() => declineOffer(offer.noteId)}>
+            거절
+          </button>
+          <button
+            type="button"
+            className="text-btn primary"
+            onClick={() => acceptOffer(offer.noteId)}
+          >
+            수락
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}

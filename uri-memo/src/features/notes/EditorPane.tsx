@@ -1,6 +1,8 @@
 import { ColorPicker } from "../../components/ColorPicker";
 import { isDesktopApp } from "../../platform/env";
 import { openSticky } from "../../platform/stickyWindows";
+import { roleOf } from "../share/membership";
+import { useShare } from "../share/shareStore";
 import { formatNoteTime } from "./formatTime";
 import { NoteEditor } from "./NoteEditor";
 import { useNotes, useSelectedNote } from "./notesStore";
@@ -8,6 +10,11 @@ import { useNotes, useSelectedNote } from "./notesStore";
 export function EditorPane() {
   const note = useSelectedNote();
   const { select, edit, trash, restore, deleteForever } = useNotes.getState();
+  const shareAvailable = useShare((s) => s.available);
+  const share = useShare((s) => (note ? s.shares[note.id] : undefined));
+  const myId = useShare((s) => s.myId);
+  const connected = useShare((s) => s.connected);
+  const { openShareDialog, beforeDeleteForever, forgetShare } = useShare.getState();
 
   if (!note) {
     return (
@@ -18,6 +25,12 @@ export function EditorPane() {
   }
 
   const inTrash = note.deletedAt !== null;
+  const activeShare = share?.status === "active" ? share.signed.membership : null;
+  const myRole = activeShare && myId ? roleOf(activeShare, myId) : null;
+  const viewOnly = myRole === "viewer";
+  const onlineMembers = activeShare
+    ? activeShare.members.filter((m) => m.id !== myId && connected.includes(m.id)).length
+    : 0;
 
   return (
     <section className={`editor-pane color-${note.color}`} aria-label="메모 편집">
@@ -33,17 +46,21 @@ export function EditorPane() {
 
         {inTrash ? (
           <div className="editor-actions">
-            <span className="editor-meta">휴지통의 메모는 30일 후 영구 삭제됩니다.</span>
+            <span className="editor-meta">
+              {activeShare
+                ? "공유 메모입니다. 영구 삭제하면 공유에서 나갑니다 (소유자는 공유 종료)."
+                : "휴지통의 메모는 30일 후 영구 삭제됩니다."}
+            </span>
             <button type="button" className="text-btn" onClick={() => restore(note.id)}>
               복원
             </button>
             <button
               type="button"
               className="text-btn danger"
-              onClick={() => {
-                if (window.confirm("이 메모를 영구 삭제할까요? 되돌릴 수 없습니다.")) {
-                  void deleteForever(note.id);
-                }
+              onClick={async () => {
+                if (!window.confirm("이 메모를 영구 삭제할까요? 되돌릴 수 없습니다.")) return;
+                if (activeShare) await beforeDeleteForever(note.id);
+                await deleteForever(note.id);
               }}
             >
               영구 삭제
@@ -51,8 +68,27 @@ export function EditorPane() {
           </div>
         ) : (
           <div className="editor-actions">
-            <span className="editor-meta">{formatNoteTime(note.updatedAt)} 수정</span>
+            <span className="editor-meta">
+              {viewOnly ? "보기 전용 · " : ""}
+              {formatNoteTime(note.updatedAt)} 수정
+            </span>
             <ColorPicker value={note.color} onChange={(color) => edit(note.id, { color })} />
+            {shareAvailable && (
+              <button
+                type="button"
+                className={`icon-btn${activeShare ? " active" : ""}`}
+                onClick={() => openShareDialog(note.id)}
+                aria-label="친구와 공유"
+                title={
+                  activeShare
+                    ? `공유 중 · ${activeShare.members.length}명 (지금 연결 ${onlineMembers}명)`
+                    : "친구와 공유 (같은 Wi-Fi)"
+                }
+              >
+                👥
+                {activeShare && <span className="shared-badge">{activeShare.members.length}</span>}
+              </button>
+            )}
             {isDesktopApp && (
               <button
                 type="button"
@@ -79,7 +115,7 @@ export function EditorPane() {
               className="icon-btn"
               onClick={() => trash(note.id)}
               aria-label="휴지통으로 이동"
-              title="휴지통으로 이동"
+              title={activeShare ? "휴지통으로 이동 (나에게서만 숨김)" : "휴지통으로 이동"}
             >
               🗑
             </button>
@@ -87,10 +123,24 @@ export function EditorPane() {
         )}
       </header>
 
+      {/* 소유자는 이 기록으로 아직 못 만난 멤버에게 종료를 전하므로 지우지 않는다 */}
+      {share && share.status !== "active" && share.signed.membership.owner !== myId && (
+        <div className="share-notice" role="status">
+          <span>
+            {share.status === "ended"
+              ? "소유자가 공유를 종료했습니다. 이 메모는 내 개인 메모로 남았습니다."
+              : "공유에서 빠졌습니다. 이 메모는 내 개인 메모로 남았습니다."}
+          </span>
+          <button type="button" className="text-btn" onClick={() => forgetShare(note.id)}>
+            확인
+          </button>
+        </div>
+      )}
+
       <NoteEditor
-        key={note.id}
+        key={`${note.id}:${viewOnly}`}
         noteId={note.id}
-        readOnly={inTrash}
+        readOnly={inTrash || viewOnly}
         onSave={(changes) => edit(note.id, changes)}
       />
     </section>

@@ -13,6 +13,7 @@ import { emitNoteChanged, onNoteChangedElsewhere } from "../../platform/events";
 import { openSticky, showHub, STICKY_COLLAPSED_HEIGHT } from "../../platform/stickyWindows";
 import { flushAllDocs } from "../notes/docSession";
 import { flushPendingEdit } from "../notes/editorFlush";
+import { isViewOnly } from "../share/viewOnly";
 import { NoteEditor } from "../notes/NoteEditor";
 import "./sticky.css";
 
@@ -30,6 +31,7 @@ export function StickyApp({ noteId }: { noteId: string }) {
   const [note, setNote] = useState<Note | null>(null);
   const [win, setWin] = useState<StickyWindowState>(() => defaultStickyState(noteId));
   const [menuOpen, setMenuOpen] = useState(false);
+  const [viewOnly, setViewOnly] = useState(false);
   const collapsed = useRef(false);
 
   const updateWindow = (patch: WindowPatch) => {
@@ -40,8 +42,8 @@ export function StickyApp({ noteId }: { noteId: string }) {
 
   useEffect(() => {
     void (async () => {
-      const { notes, docs } = await openStores();
-      const svc = new NoteService(notes, docs);
+      const stores = await openStores();
+      const svc = new NoteService(stores.notes, stores.docs);
       const loaded = await svc.get(noteId);
       if (!loaded || loaded.deletedAt !== null) {
         await appWindow.close();
@@ -51,6 +53,7 @@ export function StickyApp({ noteId }: { noteId: string }) {
       collapsed.current = state.collapsed;
       setWin(state);
       setNote(loaded);
+      setViewOnly(await isViewOnly(stores, noteId));
       setService(svc);
     })();
   }, [noteId]);
@@ -102,6 +105,7 @@ export function StickyApp({ noteId }: { noteId: string }) {
         return;
       }
       setNote(latest);
+      setViewOnly(await isViewOnly(await openStores(), noteId));
     });
   }, [noteId, service]);
 
@@ -225,8 +229,10 @@ export function StickyApp({ noteId }: { noteId: string }) {
       {!win.collapsed && (
         <div className="sticky-body" onMouseDown={() => setMenuOpen(false)}>
           <NoteEditor
+            key={String(viewOnly)}
             noteId={noteId}
-            autoFocus={note.plainText === ""}
+            readOnly={viewOnly}
+            autoFocus={note.plainText === "" && !viewOnly}
             onSave={(changes) => void edit(changes)}
           />
           <div

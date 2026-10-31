@@ -1,4 +1,5 @@
 import type { NoteView } from "../../domain/note";
+import { OfferBanner } from "../share/ShareDialog";
 import { useShare } from "../share/shareStore";
 import { NoteList } from "./NoteList";
 import { useNotes } from "./notesStore";
@@ -50,6 +51,8 @@ export function Sidebar({ searchRef }: { searchRef: React.RefObject<HTMLInputEle
         onChange={(e) => setQuery(e.target.value)}
         aria-label="메모 검색"
       />
+
+      <OfferBanner />
 
       <nav className="view-tabs" aria-label="보기">
         {VIEWS.map((v) => (

@@ -11,6 +11,7 @@ const FTS_MIN_QUERY = 3;
 interface NoteRow {
   id: string;
   folder_id: string | null;
+  space_id: string | null;
   title: string;
   content: string;
   plain_text: string;
@@ -27,6 +28,7 @@ interface NoteRow {
 const toNote = (row: NoteRow): Note => ({
   id: row.id,
   folderId: row.folder_id,
+  spaceId: row.space_id,
   title: row.title,
   content: row.content,
   plainText: row.plain_text,
@@ -87,10 +89,11 @@ export class SqliteNoteRepository implements NoteRepository {
   async upsert(note: Note): Promise<void> {
     await this.db.execute(
       `INSERT INTO notes (id, folder_id, title, content, plain_text, color, pinned, remind_at,
-                          created_at, updated_at, deleted_at, rev, dirty)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                          created_at, updated_at, deleted_at, rev, dirty, space_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        ON CONFLICT(id) DO UPDATE SET
-         folder_id = excluded.folder_id, title = excluded.title, content = excluded.content,
+         folder_id = excluded.folder_id, space_id = excluded.space_id,
+         title = excluded.title, content = excluded.content,
          plain_text = excluded.plain_text, color = excluded.color, pinned = excluded.pinned,
          remind_at = excluded.remind_at, updated_at = excluded.updated_at,
          deleted_at = excluded.deleted_at, rev = excluded.rev, dirty = excluded.dirty`,
@@ -108,6 +111,7 @@ export class SqliteNoteRepository implements NoteRepository {
         note.deletedAt,
         note.rev,
         note.dirty ? 1 : 0,
+        note.spaceId,
       ],
     );
   }

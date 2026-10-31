@@ -197,3 +197,75 @@
   gap: 8px;
   margin-top: 14px;
 }
+
+.dialog-actions.end {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.dialog select {
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.peer-check {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.empty-friends {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* 받은 공유 제안 (Hub 목록 위) */
+.offer-banner {
+  display: grid;
+  gap: 6px;
+  margin: 0 12px 8px;
+}
+
+.offer-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+  font-size: 13px;
+}
+
+.offer-text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 공유가 끝났거나 내보내진 메모 안내 (편집기 위) */
+.share-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 16px 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgb(0 0 0 / 0.06);
+  font-size: 13px;
+}
+
+.share-notice span {
+  flex: 1;
+}
+
+.shared-badge {
+  font-size: 12px;
+}

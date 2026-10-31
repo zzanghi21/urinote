@@ -75,7 +75,14 @@ export class NoteService {
   discardIfEmpty(id: string): Promise<boolean> {
     return this.enqueue(async () => {
       const note = await this.repo.get(id);
-      if (!note || note.plainText.trim() !== "" || note.remindAt !== null || note.rev !== 0) {
+      // 공유 메모는 친구가 막 만든 빈 메모일 수 있으므로 지우지 않는다 (DESIGN.md 4.9.7)
+      if (
+        !note ||
+        note.spaceId !== null ||
+        note.plainText.trim() !== "" ||
+        note.remindAt !== null ||
+        note.rev !== 0
+      ) {
         return false;
       }
       await this.repo.remove(id);
@@ -102,6 +109,29 @@ export class NoteService {
       }
       return notes.length;
     });
+  }
+
+  /**
+   * 친구가 공유한 메모를 내 기기에 만든다. 모든 멤버가 같은 메모 ID 를 쓴다.
+   * 본문은 따로 문서 저장소에 넣고, 여기서는 목록용 캐시와 내 개인 설정만 만든다.
+   */
+  adoptShared(id: string, plainText: string, color: NoteColor): Promise<Note> {
+    return this.enqueue(async () => {
+      const existing = await this.repo.get(id);
+      const note = existing
+        ? { ...existing, spaceId: id, deletedAt: null }
+        : newNote(
+            { id, spaceId: id, color, plainText, title: titleFromText(plainText) },
+            this.now(),
+          );
+      await this.repo.upsert(note);
+      return note;
+    });
+  }
+
+  /** 공유 시작(spaceId = 메모 ID) 또는 개인 메모로 되돌리기(null) */
+  setSpace(id: string, spaceId: string | null) {
+    return this.mutate(id, (note) => ({ ...note, spaceId }));
   }
 
   compactDocs(threshold = LOCAL_COMPACT_THRESHOLD) {

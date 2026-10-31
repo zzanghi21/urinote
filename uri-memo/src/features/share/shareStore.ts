@@ -4,11 +4,18 @@ import type { Contact, ContactsRepository } from "../../data/local/contactsRepo"
 import { isDesktopApp } from "../../platform/env";
 import * as p2p from "../../platform/p2p";
 import { PairingSession, type PairingView } from "./pairing";
-import { decodeMessage, encodeMessage, type PairMessage } from "./protocol";
+import type { InboxItem, ShareRecord } from "../../data/local/sharesRepo";
+import { fromBase64, toBase64 } from "../../domain/noteDoc";
+import { emitNoteChanged, onAnyDocUpdate, P2P_SOURCE } from "../../platform/events";
+import { useNotes } from "../notes/notesStore";
+import type { Member } from "./membership";
+import { createNoteBridge } from "./noteBridge";
+import { decodeMessage, encodeMessage, type PairMessage, type SyncMessage } from "./protocol";
+import { ShareEngine, type Invitee } from "./shareEngine";
+import { DEVICE_ID_KEY } from "./viewOnly";
 
 /**
- * 친구 공유 엔진 (Hub 창 전용). S2 범위: P2P 시작, 근처 기기, 친구 등록·관리.
- * 공유 메모 동기화(S3)도 이 엔진에 붙는다.
+ * 친구 공유 (Hub 창 전용): P2P 시작, 근처 기기, 친구 등록·관리(S2), 메모 공유·동기화(S3).
  */
 
 const DEVICE_NAME_KEY = "device_name";
@@ -32,6 +39,12 @@ interface ShareState {
   nearby: Record<string, NearbyPeer>;
   dialogOpen: boolean;
   pairing: PairingView | null;
+  /** 공유 중이거나 공유했던 메모 (noteId → 기록) */
+  shares: Record<string, ShareRecord>;
+  /** 받은 공유 제안 */
+  inbox: IncomingOffer[];
+  /** 공유 설정 창이 열린 메모 */
+  shareDialogNoteId: string | null;
 
   /** 앱 시작 시: 친구가 있으면 P2P 를 바로 켜서 친구 기기와 자동 연결 */
   init(): Promise<void>;
@@ -47,12 +60,39 @@ interface ShareState {
   removeContact(deviceId: string): Promise<void>;
   myConnectCode(): Promise<string>;
   connectWithCode(code: string): Promise<void>;
+
+  openShareDialog(noteId: string): Promise<void>;
+  closeShareDialog(): void;
+  shareNote(noteId: string, invitees: Invitee[]): Promise<void>;
+  setMembers(noteId: string, members: Member[]): Promise<void>;
+  endShare(noteId: string): Promise<void>;
+  leaveShare(noteId: string): Promise<void>;
+  /** 공유 메모를 영구 삭제하기 전: 소유자는 공유 종료, 멤버는 나가기 (DESIGN.md 4.9.7) */
+  beforeDeleteForever(noteId: string): Promise<void>;
+  acceptOffer(noteId: string): Promise<void>;
+  declineOffer(noteId: string): Promise<void>;
+  forgetShare(noteId: string): Promise<void>;
+}
+
+export interface IncomingOffer {
+  noteId: string;
+  fromId: string;
+  fromName: string;
+  title: string;
 }
 
 export const useShare = create<ShareState>((set, get) => {
   let repo: ContactsRepository | null = null;
   let session: PairingSession | null = null;
   let starting: Promise<void> | null = null;
+  let engine: ShareEngine | null = null;
+  /** 엔진 작업은 도착 순서대로 하나씩 처리한다 (멤버 목록 갱신 → 동기화 요청 순서 보장) */
+  let engineQueue: Promise<unknown> = Promise.resolve();
+  const runEngine = (task: (e: ShareEngine) => Promise<unknown>) => {
+    const result = engineQueue.then(() => (engine ? task(engine) : undefined));
+    engineQueue = result.catch((e: unknown) => console.error("[share]", e));
+    return result;
+  };
 
   const setError = (e: unknown) => set({ error: e instanceof Error ? e.message : String(e) });
 
@@ -112,6 +152,7 @@ export const useShare = create<ShareState>((set, get) => {
       case "connected":
         set((s) => ({ connected: [...new Set([...s.connected, event.peer.id])] }));
         void repo?.touch(event.peer.id, Date.now());
+        void runEngine((e) => e.onConnected(event.peer.id));
         return;
       case "disconnected":
         set((s) => ({ connected: s.connected.filter((id) => id !== event.peer.id) }));
@@ -140,15 +181,64 @@ export const useShare = create<ShareState>((set, get) => {
       newSession((deps) => PairingSession.fromRequest(deps, from, message));
       return;
     }
-    if (session?.peerId === from) await session.handle(message);
+    if (message.t.startsWith("pair-")) {
+      if (session?.peerId === from) await session.handle(message as PairMessage);
+      return;
+    }
+    await runEngine((e) => e.handle(from, message as SyncMessage));
   };
+
+  const reloadShares = async () => {
+    const stores = await openStores();
+    if (!stores.shares) return;
+    const records = await stores.shares.list();
+    const contacts = new Map(get().contacts.map((c) => [c.deviceId, c.name]));
+    const inbox = (await stores.shares.inbox()).map((item: InboxItem) => {
+      const offer = decodeMessage(new TextEncoder().encode(item.payload));
+      const members = offer?.t === "offer" ? offer.signed.membership.members : [];
+      return {
+        noteId: item.noteId,
+        fromId: item.fromId,
+        fromName:
+          contacts.get(item.fromId) ?? members.find((m) => m.id === item.fromId)?.name ?? "친구",
+        title: offer?.t === "offer" ? offer.title : "",
+      };
+    });
+    set({ shares: Object.fromEntries(records.map((r) => [r.noteId, r])), inbox });
+    // 권한이 바뀌었을 수 있으니 스티키 창들이 다시 읽게 한다
+    for (const r of records) emitNoteChanged(r.noteId);
+  };
+
+  const refreshNotes = () => void useNotes.getState().refresh();
 
   const start = () => {
     starting ??= (async () => {
       const contacts = get().contacts.map((c) => c.deviceId);
       const myId = await p2p.startP2p(contacts);
+      const stores = await openStores();
+      if (stores.shares) {
+        engine = new ShareEngine({
+          myId,
+          myName: () => get().deviceName,
+          send: (peer, message) => p2p.sendTo(peer, encodeMessage(message)),
+          connectedPeers: () => get().connected,
+          sign: async (data) => toBase64(await p2p.sign(data)),
+          verify: (signer, data, signature) => p2p.verify(signer, data, fromBase64(signature)),
+          shares: stores.shares,
+          notes: createNoteBridge(stores, refreshNotes),
+          onChange: () => void reloadShares(),
+        });
+      }
       await p2p.onP2pEvent(onEvent);
+      // 내 창들(Hub·스티키)에서 생긴 편집을 친구 기기로 보낸다. 친구에게서 받은 것(p2p)은 제외
+      await onAnyDocUpdate((noteId, update, source) => {
+        if (source !== P2P_SOURCE)
+          void runEngine((e) => e.onLocalUpdate(noteId, fromBase64(update)));
+      });
+      // 스티키 창이 보기 전용 여부를 판단할 수 있도록 내 기기 ID 를 남긴다
+      await repo?.setSetting(DEVICE_ID_KEY, myId);
       set({ myId, started: true, connected: await p2p.connectedPeers() });
+      for (const peer of get().connected) void runEngine((e) => e.onConnected(peer));
     })().catch((e: unknown) => {
       starting = null;
       throw e;
@@ -167,6 +257,9 @@ export const useShare = create<ShareState>((set, get) => {
     nearby: {},
     dialogOpen: false,
     pairing: null,
+    shares: {},
+    inbox: [],
+    shareDialogNoteId: null,
 
     async init() {
       if (!isDesktopApp) return;
@@ -175,6 +268,7 @@ export const useShare = create<ShareState>((set, get) => {
         const name = (await repo?.getSetting(DEVICE_NAME_KEY)) ?? (await p2p.defaultDeviceName());
         set({ deviceName: name });
         await reloadContacts();
+        await reloadShares();
         // 친구가 없는 동안에는 P2P 를 켜지 않는다 (방화벽 확인 창도 친구 추가를 처음 열 때 뜬다)
         if (get().contacts.length > 0) await start();
       } catch (e) {
@@ -278,8 +372,64 @@ export const useShare = create<ShareState>((set, get) => {
         setError(e);
       }
     },
+
+    async openShareDialog(noteId) {
+      set({ shareDialogNoteId: noteId, error: null });
+      try {
+        await start();
+        await reloadShares();
+      } catch (e) {
+        setError(e);
+      }
+    },
+
+    closeShareDialog() {
+      set({ shareDialogNoteId: null });
+    },
+
+    async shareNote(noteId, invitees) {
+      await start();
+      await runEngine((e) => e.share(noteId, invitees)).catch((e) => set({ error: errorText(e) }));
+    },
+
+    async setMembers(noteId, members) {
+      await runEngine((e) => e.updateMembers(noteId, members)).catch((e) =>
+        set({ error: errorText(e) }),
+      );
+    },
+
+    async endShare(noteId) {
+      await runEngine((e) => e.end(noteId)).catch((e) => set({ error: errorText(e) }));
+    },
+
+    async leaveShare(noteId) {
+      await runEngine((e) => e.leave(noteId)).catch((e) => set({ error: errorText(e) }));
+    },
+
+    async beforeDeleteForever(noteId) {
+      const record = get().shares[noteId];
+      if (!record || record.status !== "active") return;
+      if (record.signed.membership.owner === get().myId) await get().endShare(noteId);
+      else await get().leaveShare(noteId);
+    },
+
+    async acceptOffer(noteId) {
+      await start();
+      await runEngine((e) => e.acceptOffer(noteId));
+    },
+
+    async declineOffer(noteId) {
+      await start();
+      await runEngine((e) => e.declineOffer(noteId));
+    },
+
+    async forgetShare(noteId) {
+      await runEngine((e) => e.forget(noteId));
+    },
   };
 });
+
+const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 /** 기기 ID 를 사람이 비교하기 쉽게 앞 8자리만 4자씩 끊어 보여 준다 */
 export const shortDeviceId = (id: string) => `${id.slice(0, 4)} ${id.slice(4, 8)}`.toUpperCase();
