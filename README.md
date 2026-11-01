@@ -96,3 +96,5 @@ Open 👥 (Friends) in both windows and each appears under "Urinote nearby". If 
 ## License
 
 [MIT](LICENSE) © 2026 zzanghi
+
+Third-party notices: [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) (also shipped with the installers). After changing dependencies, regenerate it with `npm run licenses` in `uri-memo/` — CI fails if it is out of date.

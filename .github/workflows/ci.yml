@@ -54,4 +54,7 @@ jobs:
       - run: npm run build
       - run: cargo test --lib
         working-directory: uri-memo/src-tauri
+      # THIRD_PARTY_LICENSES.md must match the current dependencies (run `npm run licenses`)
+      - if: runner.os == 'Linux'
+        run: npm run licenses && git diff --exit-code ../THIRD_PARTY_LICENSES.md
       - run: npm run tauri build -- --debug --no-bundle

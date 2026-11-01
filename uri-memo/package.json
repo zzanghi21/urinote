@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "licenses": "node scripts/third-party-licenses.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
