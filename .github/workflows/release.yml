@@ -1,5 +1,5 @@
-# 설치 파일 만들기: v* 태그를 올리면 Windows / macOS / Ubuntu 설치 파일을 만들어
-# GitHub Release 초안에 올린다. 아직 코드 서명은 하지 않는다 (M6).
+# Build installers: pushing a v* tag builds Windows / macOS / Ubuntu installers and
+# uploads them to a draft GitHub Release. Not code-signed yet (M6).
 #   git tag v0.1.0 && git push origin v0.1.0
 name: Release
 
@@ -56,7 +56,7 @@ jobs:
           releaseDraft: true
           prerelease: true
           args: ${{ matrix.args }}
-      # 수동 실행(태그 없음)일 때도 Actions 화면에서 설치 파일을 받을 수 있게
+      # Also make installers downloadable from the Actions page for manual runs (no tag)
       - uses: actions/upload-artifact@v4
         with:
           name: urinote-${{ runner.os }}-${{ strategy.job-index }}

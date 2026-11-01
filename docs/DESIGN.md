@@ -1,283 +1,277 @@
-# Urinote(우리노트) 설계 및 개발 계획서
+# Urinote — Design and Development Plan
 
-| 항목 | 내용 |
+| Item | Details |
 |---|---|
-| 제품명 | **Urinote (우리노트)** |
-| 문서 버전 | v0.3 — 친구 공유를 **같은 Wi-Fi 전용 서버리스 P2P**로 재설계 (v0.2: CRDT(Yjs) 동기화) |
-| 작성일 | 2026-10-28 |
-| 대상 플랫폼 | Windows 10/11, macOS, Ubuntu 22.04+ (데스크톱), Android, iOS |
-| 앱 ID (안) | `com.urinote.app` |
+| Product | **Urinote** (Korean: 우리노트, "our notes") |
+| Document version | v0.3 — friend sharing redesigned as **serverless P2P on the same Wi-Fi** (v0.2: CRDT (Yjs) sync) |
+| Date | 2026-10-28 |
+| Target platforms | Windows 10/11, macOS, Ubuntu 22.04+ (desktop), Android, iOS |
+| App ID (draft) | `com.urinote.app` |
 
 ---
 
-## 1. 개요
+## 1. Overview
 
-### 1.1 제품 비전
-> **"생각나는 순간 붙이고, 어디서나 이어 쓰는 우리의 메모."**
+### 1.1 Vision
+> **"Stick it the moment you think of it, keep writing anywhere — notes for us."**
 
-Urinote는 PC 바탕화면에 포스트잇처럼 붙여 두는 **스티키 메모**와, 휴대폰에서 같은 메모를 보고 고치는 **동기화 메모장**을 하나로 합친 크로스플랫폼 앱이다.
+Urinote is a cross-platform app that combines **sticky notes** pinned to the PC desktop like Post-its with a **synced notebook** for viewing and editing the same notes on a phone.
 
-### 1.2 목표
-- 데스크톱: 바탕화면에 떠 있는 메모 창(항상 위, 투명도, 위치 기억)
-- 모바일: 같은 메모를 보고 편집하는 전용 앱
-- 오프라인 우선: 네트워크가 없어도 모든 기능 사용, 연결되면 자동 동기화
-- 단순함: 메모 · 알림 · 동기화에 집중 (위젯/녹화 등 부가 기능 배제)
-- 친구 공유 (v1.1): **같은 Wi-Fi에 있는 친구**와 메모를 **실시간 공동 편집**. 서버·계정 없이 기기끼리 직접(P2P) 암호화 연결
+### 1.2 Goals
+- Desktop: note windows floating on the desktop (always on top, opacity, remembered position)
+- Mobile: a dedicated app to view and edit the same notes
+- Offline first: every feature works without a network; syncs automatically when connected
+- Simplicity: focus on notes, reminders and sync (no widgets, recording or other extras)
+- Friend sharing (v1.1): **real-time co-editing** of notes with **friends on the same Wi-Fi**, over direct encrypted device-to-device (P2P) connections with no server or account
 
-### 1.3 범위 밖 (v1)
-- 공개 웹 링크 공유 (로그인 없이 보기)
-- 홈 화면 위젯, 화면 녹화, 날씨/시계 위젯
-- 웹 버전 (v2 검토)
+### 1.3 Out of scope (v1)
+- Public web links (view without signing in)
+- Home-screen widgets, screen recording, weather/clock widgets
+- Web version (to be considered for v2)
 
 ---
 
-## 2. 벤치마킹 분석
+## 2. Benchmark
 
-| 기능 | 에스메모(SMemo) | MS Sticky Notes | Urinote 방향 |
+| Feature | SMemo | MS Sticky Notes | Urinote |
 |---|---|---|---|
-| 바탕화면 스티키 창 | ✅ | ✅ | ✅ 핵심 |
-| 색상 분류 | ✅ | ✅ | ✅ 7색 |
-| 폴더 | ✅ | ❌ | ✅ |
-| 서식 / 체크리스트 | 일부 | ✅ | ✅ |
-| PC↔모바일 동기화 | ✅ (회원가입) | ✅ (모바일은 OneNote 경유) | ✅ **전용 모바일 앱** |
-| 알림 | ✅ | ❌ | ✅ |
-| 휴지통·복원 | ✅ | 일부 | ✅ |
-| 메모 잠금 | ✅ | ❌ | v1.2 |
-| 친구와 메모 공유 | ❌ | ❌ | ✅ v1.1 (같은 Wi-Fi, 서버 없이 실시간 공동 편집) |
-| 캘린더 / D-Day | ✅ | ❌ | v1.2 |
-| 화면 캡처 → 메모 | ✅ | 이미지 첨부 | v1.2 |
-| 위젯·녹화 | ✅ | ❌ | ❌ 제외 |
+| Desktop sticky windows | ✅ | ✅ | ✅ core |
+| Color labels | ✅ | ✅ | ✅ 7 colors |
+| Folders | ✅ | ❌ | ✅ |
+| Formatting / checklists | partial | ✅ | ✅ |
+| PC ↔ mobile sync | ✅ (sign-up) | ✅ (mobile via OneNote) | ✅ **dedicated mobile app** |
+| Reminders | ✅ | ❌ | ✅ |
+| Trash & restore | ✅ | partial | ✅ |
+| Note lock | ✅ | ❌ | v1.2 |
+| Share notes with friends | ❌ | ❌ | ✅ v1.1 (same Wi-Fi, serverless real-time co-editing) |
+| Calendar / D-Day | ✅ | ❌ | v1.2 |
+| Screen capture → note | ✅ | image attachments | v1.2 |
+| Widgets / recording | ✅ | ❌ | ❌ excluded |
 
-**차별화 포인트**
-1. MS Sticky Notes 대비 → 모바일 **전용 앱**과 알림·폴더 제공
-2. 에스메모 대비 → 기능을 덜어 낸 **깔끔한 UX**, 가벼운 앱 용량(목표 20MB 이하)
-3. 오프라인 우선 + **CRDT 자동 병합** 동기화 (충돌 사본 없음)
-4. 친구와 **서버 없는 공동 편집**: 메모가 우리 기기 밖으로 나가지 않음
+**Differentiators**
+1. vs. MS Sticky Notes → a **dedicated mobile app**, reminders and folders
+2. vs. SMemo → a **clean UX** with fewer features and a small footprint (target ≤ 20 MB)
+3. Offline-first sync with **automatic CRDT merging** (no conflict copies)
+4. **Serverless co-editing** with friends: notes never leave our own devices
 
-> 참고 제품의 기능만 벤치마킹하며, 이름·아이콘·UI 디자인은 독자적으로 제작한다.
+> Only features of the reference products are benchmarked; the name, icon and UI design are original.
 
 ---
 
-## 3. 요구사항
+## 3. Requirements
 
-### 3.1 기능 요구사항
+### 3.1 Functional requirements
 
-우선순위: **P0** = v1.0 필수, **P1** = v1.0 목표, **P2** = 이후 버전
+Priority: **P0** = required for v1.0, **P1** = target for v1.0, **P2** = later versions
 
-| ID | 영역 | 요구사항 | 우선순위 |
+| ID | Area | Requirement | Priority |
 |---|---|---|---|
-| F-01 | 메모 | 메모 생성/편집/삭제, 입력 즉시 자동 저장 (500ms 디바운스) | P0 |
-| F-02 | 메모 | 7가지 색상 (노랑·초록·분홍·보라·파랑·회색·차콜) | P0 |
-| F-03 | 메모 | 서식: 굵게·기울임·밑줄·취소선·글머리 기호·체크리스트 | P0 |
-| F-04 | 메모 | 상단 고정(핀), 정렬(수정일/생성일/제목) | P0 |
-| F-05 | 검색 | 제목·본문 전문 검색 (한글 지원) | P0 |
-| F-06 | 휴지통 | 삭제 메모 30일 보관, 복원/영구 삭제 | P1 |
-| F-07 | 폴더 | 폴더 생성/이름 변경/삭제, 메모 이동 | P1 |
-| D-01 | 데스크톱 | 메모 1개 = 창 1개 (테두리 없는 스티키 창) | P0 |
-| D-02 | 데스크톱 | 창 위치·크기·열림 상태 기억, 재시작 시 복원 | P0 |
-| D-03 | 데스크톱 | 항상 위, 투명도(30~100%), 접기(제목만 표시) | P1 |
-| D-04 | 데스크톱 | 시스템 트레이 메뉴 (새 메모 / 모두 보이기·숨기기 / 목록 / 종료) | P0 |
-| D-05 | 데스크톱 | 전역 단축키 `Ctrl+Alt+N` 새 메모, `Ctrl+Alt+H` 모두 숨기기 | P1 |
-| D-06 | 데스크톱 | OS 시작 시 자동 실행 (설정) | P1 |
-| M-01 | 모바일 | 메모 목록 (그리드/리스트 전환), 전체 화면 편집기 | P0 |
-| M-02 | 모바일 | 다른 앱에서 텍스트 공유 → 새 메모 | P1 |
-| S-01 | 계정 | 이메일 + Google 로그인, 로그아웃, 회원 탈퇴 | P0 |
-| S-02 | 동기화 | 오프라인 편집, 온라인 시 자동 동기화, 실시간 반영 | P0 |
-| S-03 | 동기화 | 동시 편집 자동 병합 (CRDT), 데이터 무손실 | P0 |
-| S-04 | 동기화 | 동기화 상태 표시 (동기화됨/진행 중/오프라인/오류) | P1 |
-| S-05 | 동기화 | 같은 PC의 여러 창(Hub·스티키)에서 같은 메모 동시 편집 시 실시간 병합 | P0 |
-| SH-01 | 공유 | 같은 Wi-Fi의 Urinote 기기 자동 발견, **친구 등록(6자리 확인 코드 비교)** | v1.1 |
-| SH-02 | 공유 | 메모별 공유: 친구 선택 + 권한(편집 / 보기 전용) → 상대가 수락하면 시작 | v1.1 |
-| SH-03 | 공유 | 같은 Wi-Fi에 함께 있으면 실시간 공동 편집, 상대 커서·이름 표시 | v1.1 |
-| SH-04 | 공유 | 떨어져 있던 동안의 편집은 **다시 같은 Wi-Fi에서 만나면 자동 병합** (다른 멤버를 거쳐 전달 가능) | v1.1 |
-| SH-05 | 공유 | 기기 간 연결은 상호 인증 + 암호화 (같은 Wi-Fi의 다른 사람이 엿보거나 끼어들 수 없음) | v1.1 |
-| SH-06 | 공유 | 멤버 내보내기 / 공유 나가기 / 공유 종료 (이미 받은 사본은 회수 불가함을 안내) | v1.1 |
-| N-01 | 알림 | 메모별 알림 시각 설정 → 로컬 알림, 클릭 시 메모 열기 | P1 |
-| E-01 | 설정 | 라이트/다크/시스템 테마, 기본 메모 색상, 글꼴 크기 | P1 |
-| E-02 | 설정 | JSON 내보내기/가져오기 | P1 |
-| X-01 | 보안 | 메모 잠금 (PIN/생체 인증, 본문 로컬 암호화) | P2 |
-| X-02 | 일정 | 캘린더 보기, D-Day | P2 |
-| X-03 | 첨부 | 이미지 첨부, 화면 캡처 → 메모 | P2 |
+| F-01 | Notes | Create/edit/delete notes, auto-save as you type (500 ms debounce) | P0 |
+| F-02 | Notes | 7 colors (yellow, green, pink, purple, blue, gray, charcoal) | P0 |
+| F-03 | Notes | Formatting: bold, italic, underline, strikethrough, bullets, checklists | P0 |
+| F-04 | Notes | Pin to top; sort by modified / created / title | P0 |
+| F-05 | Search | Full-text search of titles and bodies (Korean supported) | P0 |
+| F-06 | Trash | Keep deleted notes for 30 days; restore / delete forever | P1 |
+| F-07 | Folders | Create / rename / delete folders, move notes | P1 |
+| D-01 | Desktop | One note = one window (frameless sticky window) | P0 |
+| D-02 | Desktop | Remember window position, size and open state; restore on restart | P0 |
+| D-03 | Desktop | Always on top, opacity (30–100%), collapse (title only) | P1 |
+| D-04 | Desktop | System tray menu (new note / show·hide all / list / quit) | P0 |
+| D-05 | Desktop | Global shortcuts: `Ctrl+Alt+N` new note, `Ctrl+Alt+H` hide all (⌥⌘ on macOS) | P1 |
+| D-06 | Desktop | Start at login (setting) | P1 |
+| M-01 | Mobile | Note list (grid/list), full-screen editor | P0 |
+| M-02 | Mobile | Share text from other apps → new note | P1 |
+| S-01 | Account | Email + Google sign-in, sign-out, account deletion | P0 |
+| S-02 | Sync | Edit offline, sync automatically when online, live updates | P0 |
+| S-03 | Sync | Automatic merging of concurrent edits (CRDT), no data loss | P0 |
+| S-04 | Sync | Sync status (synced / syncing / offline / error) | P1 |
+| S-05 | Sync | Live merging when the same note is edited in several windows (hub / sticky) on one PC | P0 |
+| SH-01 | Sharing | Auto-discover Urinote devices on the same Wi-Fi; **add friends by comparing a 6-digit code** | v1.1 |
+| SH-02 | Sharing | Share per note: pick friends + permission (edit / view only) → starts when they accept | v1.1 |
+| SH-03 | Sharing | Real-time co-editing on the same Wi-Fi, with the other person's cursor and name | v1.1 |
+| SH-04 | Sharing | Edits made while apart **merge automatically when devices meet again on the same Wi-Fi** (can be relayed by other members) | v1.1 |
+| SH-05 | Sharing | Mutually authenticated, encrypted device connections (others on the same Wi-Fi cannot snoop or join) | v1.1 |
+| SH-06 | Sharing | Remove members / leave / end sharing (explain that copies already received cannot be recalled) | v1.1 |
+| N-01 | Reminders | Per-note reminder time → local notification, opens the note | P1 |
+| E-01 | Settings | Light / dark / system theme, default note color, font size | P1 |
+| E-02 | Settings | JSON export / import | P1 |
+| X-01 | Security | Note lock (PIN / biometrics, local encryption of the body) | P2 |
+| X-02 | Schedule | Calendar view, D-Day | P2 |
+| X-03 | Attachments | Image attachments, screen capture → note | P2 |
 
-### 3.2 비기능 요구사항
+### 3.2 Non-functional requirements
 
-| 항목 | 기준 |
+| Item | Target |
 |---|---|
-| 성능 | 콜드 스타트 1초 이내, 메모 1만 개에서 검색 100ms 이내 |
-| 용량 | 데스크톱 설치 파일 20MB 이하 |
-| 오프라인 | 모든 메모 기능이 네트워크 없이 동작 |
-| 동기화 지연 | 온라인 상태에서 타 기기 반영 3초 이내 |
-| 안정성 | 앱 강제 종료 시에도 마지막 입력 손실 1초 이내 |
-| 보안 | 전 구간 HTTPS/WSS, 서버 RLS로 사용자 격리, 토큰은 OS 보안 저장소 |
-| 접근성 | 키보드 전체 조작, 스크린리더 레이블, 고대비 테마 |
-| 다국어 | 한국어 기본, 영어 (i18n 구조) |
+| Performance | Cold start within 1 s; search within 100 ms with 10,000 notes |
+| Size | Desktop installer ≤ 20 MB |
+| Offline | Every note feature works without a network |
+| Sync latency | Changes appear on other devices within 3 s when online |
+| Reliability | At most 1 s of the last input lost on a forced quit |
+| Security | HTTPS/WSS end to end, per-user isolation with server RLS, tokens in the OS secure store |
+| Accessibility | Full keyboard operation, screen-reader labels, high-contrast theme |
+| Languages | Korean by default, English (i18n structure) |
 
 ---
 
-## 4. 시스템 설계
+## 4. System design
 
-### 4.1 기술 스택
+### 4.1 Tech stack
 
-| 영역 | 기술 | 선정 이유 |
+| Area | Technology | Why |
 |---|---|---|
-| 앱 셸 | **Tauri 2** | 데스크톱+iOS/Android 단일 프로젝트, 작은 용량, 멀티 윈도우·트레이·단축키 지원 |
-| UI | **React 19 + TypeScript + Vite** | 전 플랫폼 UI 코드 공유 |
-| 스타일 | CSS Modules + CSS 변수 (테마) | 의존성 최소화 |
-| 에디터 | **TipTap** (ProseMirror) + Collaboration 확장 | 서식/체크리스트, Yjs 문서에 직접 바인딩 |
-| CRDT | **Yjs** (`y-prosemirror`, `y-protocols/awareness`) | 오프라인 편집·다기기·공동 편집 자동 병합, 증분 업데이트 전송 |
-| P2P 전송 | **iroh** (Rust, QUIC) — 릴레이 끔 + 로컬 네트워크 발견(mDNS) (v1.1) | 기기 ID = Ed25519 공개키로 상호 인증·암호화(TLS 1.3)가 내장. 데스크톱·Android·iOS 지원. 대안: `libp2p`(mdns + noise) |
-| 서명 | iroh 기기 키(Ed25519) | 공유 멤버 목록에 소유자가 서명 → 다른 멤버를 거쳐 전달돼도 위조 불가 |
-| 키 보관 | `keyring` crate (Windows 자격 증명 관리자 / macOS 키체인 / Linux Secret Service, 없으면 0600 파일 / Android Keystore) | 기기 비밀키를 OS 보안 저장소에 보관 |
-| 상태 관리 | Zustand | 단순, 창 간 상태 분리에 적합 |
-| 로컬 DB | **SQLite** (`tauri-plugin-sql`) + FTS5 | 오프라인 저장, 전문 검색 |
-| 백엔드 | **Supabase** (Postgres, Auth, Realtime) | 서버 개발 없이 인증·DB·실시간 |
-| Tauri 플러그인 | window-state, global-shortcut, autostart, notification, deep-link, store | 데스크톱/모바일 네이티브 기능 |
-| 테스트 | Vitest, Testing Library, Playwright, `cargo test` | 단위/통합/E2E |
-| CI/CD | GitHub Actions + `tauri-action` | 플랫폼별 빌드·서명·릴리스 |
+| App shell | **Tauri 2** | One project for desktop + iOS/Android, small size, multi-window, tray and shortcuts |
+| UI | **React 19 + TypeScript + Vite** | UI code shared across all platforms |
+| Styling | CSS + CSS variables (themes) | Minimal dependencies |
+| Editor | **TipTap** (ProseMirror) + Collaboration extension | Formatting/checklists, bound directly to the Yjs document |
+| CRDT | **Yjs** (`y-prosemirror`, `y-protocols/awareness`) | Automatic merging for offline, multi-device and co-editing; incremental updates |
+| P2P transport | **iroh** (Rust, QUIC) — relays off + local discovery (mDNS) (v1.1) | Device ID = Ed25519 public key, with built-in mutual authentication and encryption (TLS 1.3). Desktop, Android, iOS. Alternative: `libp2p` (mdns + noise) |
+| Signatures | iroh device key (Ed25519) | The owner signs the share member list → cannot be forged even when relayed by other members |
+| Key storage | `keyring` crate (Windows Credential Manager / macOS Keychain / Linux Secret Service, else a 0600 file / Android Keystore) | Device secret key kept in the OS secure store |
+| State | Zustand | Simple; fits separate state per window |
+| Local DB | **SQLite** (`tauri-plugin-sql`) + FTS5 | Offline storage, full-text search |
+| Backend | **Supabase** (Postgres, Auth, Realtime) | Auth, DB and realtime without writing a server |
+| Tauri plugins | global-shortcut, autostart, single-instance, notification, dialog, log, sql | Native desktop/mobile features |
+| Tests | Vitest, Testing Library, Playwright, `cargo test` | Unit / integration / E2E |
+| CI/CD | GitHub Actions + `tauri-action` | Per-platform builds, signing, releases |
 
-> **대안 (Plan B)**: Tauri 모바일에서 치명적 제약이 발견되면 모바일만 **Capacitor**로 전환한다. UI·도메인·동기화 코드는 그대로 재사용하도록 플랫폼 계층을 인터페이스로 분리한다 (4.3 참고).
+> **Plan B**: if Tauri mobile hits a blocking limitation, switch the mobile app alone to **Capacitor**. The platform layer is separated behind interfaces so UI, domain and sync code can be reused as is (see 4.3).
 
-### 4.2 아키텍처
+### 4.2 Architecture
 
 ```
-┌────────────────────── UI 계층 (React) ──────────────────────┐
-│  Hub(목록) 창  │  Sticky 노트 창(N개)  │  설정/로그인  │ 모바일 화면 │
-└───────────────┬─────────────────────────────────────────────┘
+┌────────────────────── UI layer (React) ───────────────────────┐
+│  Hub (list) window │ Sticky note windows (N) │ Settings │ Mobile │
+└───────────────┬────────────────────────────────────────────────┘
                 │ hooks / Zustand store
-┌───────────────▼──────────── 도메인 계층 (TS) ────────────────┐
-│  NoteService · FolderService · ReminderService · SearchService │
-└───────────────┬───────────────────────────────┬───────────────┘
-                │ Repository 인터페이스           │
+┌───────────────▼──────────── Domain layer (TS) ─────────────────┐
+│  NoteService · FolderService · ReminderService · SearchService  │
+└───────────────┬───────────────────────────────┬────────────────┘
+                │ Repository interfaces          │
 ┌───────────────▼──────────┐       ┌────────────▼─────────────┐
 │ LocalRepo (SQLite)        │◀─────▶│ SyncEngine               │◀── HTTPS / WSS ──▶ Supabase
-│  - 메타 + 목록/검색 캐시  │       │  - 문서 업데이트 Push    │                  (Postgres + RLS,
-│  - Yjs 문서 (스냅샷 +     │       │  - 커서 Pull / Realtime  │                   Auth, Realtime)
-│    업데이트 로그)         │       │  - 메타 LWW              │
-└──────────────────────────┘       └────────────┬─────────────┘
-                                   ┌────────────▼─────────────┐
-                                   │ ShareEngine (v1.1, Hub)  │◀── 같은 Wi-Fi P2P ──▶ 친구 기기
-                                   │  - 친구·공유 멤버 목록   │      (iroh QUIC, Rust)
-                                   │  - Yjs 동기화 프로토콜   │
-                                   │  - 권한 검사 / 커서 표시 │
+│  - metadata + list/search │       │  - push doc updates      │                  (Postgres + RLS,
+│    cache                  │       │  - cursor pull / realtime│                   Auth, Realtime)
+│  - Yjs docs (snapshot +   │       │  - metadata LWW          │
+│    update log)            │       └────────────┬─────────────┘
+└──────────────────────────┘       ┌────────────▼─────────────┐
+                                   │ ShareEngine (v1.1, hub)  │◀── same-Wi-Fi P2P ──▶ friend devices
+                                   │  - friends, share members│      (iroh QUIC, Rust)
+                                   │  - Yjs sync protocol     │
+                                   │  - permission checks,    │
+                                   │    cursors               │
                                    └──────────────────────────┘
-┌──────────────────── 플랫폼 계층 (Platform 인터페이스) ─────────┐
-│ Desktop(Tauri/Rust): WindowManager, Tray, GlobalShortcut,     │
-│                      Autostart, WindowState                   │
-│ Mobile(Tauri):      Notification, ShareIntent, SecureStorage  │
-└───────────────────────────────────────────────────────────────┘
+┌──────────────────── Platform layer (Platform interfaces) ──────┐
+│ Desktop (Tauri/Rust): WindowManager, Tray, GlobalShortcut,     │
+│                       Autostart, WindowState                   │
+│ Mobile (Tauri):       Notification, ShareIntent, SecureStorage │
+└────────────────────────────────────────────────────────────────┘
 ```
 
-**설계 원칙**
-- **로컬 DB가 원본이다.** UI는 항상 로컬 DB만 읽고 쓴다. 서버는 동기화 대상이다.
-- **본문은 CRDT(Yjs) 문서다.** 내 다른 창·내 다른 기기·친구 기기의 편집이 모두 같은 방식(Yjs 업데이트 교환)으로 병합된다. 충돌 사본은 만들지 않는다.
-- **메타데이터는 사용자 개인 것이다.** 색상·고정·폴더·알림·휴지통·창 위치는 공유 메모라도 사람마다 다르며, 내 기기끼리만 동기화한다.
-- **창 간 통신**: 각 스티키 창은 독립 WebView다. 본문 편집은 Yjs 업데이트를 Tauri 이벤트(`doc:update`)로 즉시 다른 창에 보내 실시간 병합하고, 메타 변경은 `note:changed` 이벤트로 알린다.
-- **플랫폼 의존 코드는 `platform/` 아래 인터페이스 뒤로 숨긴다.**
+**Principles**
+- **The local DB is the source of truth.** The UI only reads and writes the local DB; the server is a sync target.
+- **The note body is a CRDT (Yjs) document.** Edits from my other windows, my other devices and friends' devices all merge the same way (exchanging Yjs updates). No conflict copies.
+- **Metadata belongs to each user.** Color, pin, folder, reminder, trash and window position differ per person even for shared notes, and only sync between my own devices.
+- **Cross-window communication**: each sticky window is an independent WebView. Body edits are sent to other windows immediately as Yjs updates via a Tauri event (`doc:update`) and merged live; metadata changes are announced with `note:changed`.
+- **Platform-specific code lives behind interfaces under `platform/`.**
 
-### 4.3 프로젝트 구조
+### 4.3 Project layout
 
 ```
-memo-app/                       # 저장소 루트
-├─ docs/                        # 설계 문서
-├─ .github/workflows/           # CI
-└─ uri-memo/                    # 앱 소스 (npm/tauri 명령은 여기서 실행)
-   ├─ src/                      # 프런트엔드 (공통)
-   │  ├─ app/                   # 라우팅, 창 종류별 진입점 (hub, sticky, settings)
-   │  ├─ components/            # 공통 UI (ColorPicker, NoteCard, Toolbar ...)
+memo-app/                       # repository root
+├─ docs/                        # design documents
+├─ .github/workflows/           # CI and release builds
+└─ uri-memo/                    # app source (run npm/tauri commands here)
+   ├─ src/                      # frontend (shared)
+   │  ├─ components/            # shared UI (ColorPicker ...)
    │  ├─ features/
-   │  │  ├─ notes/              # 목록, 편집기, 검색
-   │  │  ├─ sticky/             # 스티키 창 전용 UI
-   │  │  ├─ folders/
+   │  │  ├─ notes/              # list, editor, search, folders
+   │  │  ├─ sticky/             # sticky-window UI
    │  │  ├─ reminders/
-   │  │  ├─ auth/
-   │  │  └─ settings/
-   │  ├─ domain/                # 엔티티, 서비스, Repository 인터페이스
+   │  │  ├─ settings/           # settings, backup
+   │  │  └─ share/              # friends, sharing, cursors
+   │  ├─ domain/                # entities, services, repository interfaces
    │  ├─ data/
-   │  │  ├─ local/              # SQLite / 메모리 리포지토리
-   │  │  └─ sync/               # SyncEngine, Supabase 클라이언트
-   │  ├─ platform/              # desktop.ts / mobile.ts (인터페이스 구현)
-   │  ├─ i18n/                  # t('한국어 문구') + en.ts (한국어 문구가 키, 빠진 번역은 테스트가 잡음)
-   │  └─ styles/                # 테마 변수
-   ├─ src-tauri/                # Rust (창 관리, 트레이, 플러그인 설정)
+   │  │  └─ local/              # SQLite / in-memory repositories
+   │  ├─ platform/              # Tauri wrappers (windows, events, P2P, files, tray)
+   │  └─ i18n/                  # t("Korean text") + en.ts (Korean text is the key; tests catch missing translations)
+   ├─ src-tauri/                # Rust (windows, tray, P2P, reminders, plugins)
    │  ├─ src/
-   │  ├─ migrations/            # SQLite 스키마
-   │  ├─ capabilities/          # 권한 설정
+   │  ├─ migrations/            # SQLite schema
+   │  ├─ capabilities/          # permissions
    │  └─ tauri.conf.json
-   ├─ supabase/
-   │  ├─ migrations/            # 테이블, RLS 정책
-   │  └─ functions/             # (선택) 정리 작업 등 Edge Function
-   └─ tests/                    # E2E
+   └─ tests/                    # source-level checks (i18n coverage)
 ```
 
-### 4.4 데이터 모델
+### 4.4 Data model
 
-**메모 = Yjs 문서(본문) + 개인 메타데이터**
+**Note = Yjs document (body) + personal metadata**
 
-| 구분 | 저장 위치 | 병합 방식 | 공유 시 |
+| Part | Stored in | Merge | When shared |
 |---|---|---|---|
-| 본문 (서식 포함) | Yjs 문서의 `content` (Y.XmlFragment, TipTap Collaboration 바인딩) | CRDT 자동 병합 | 멤버 모두 같은 문서 |
-| 제목·본문 텍스트 | `notes.title`, `notes.plain_text` (문서에서 파생한 **캐시**) | 문서 변경 시 재계산 | 각자 계산 |
-| 색상·고정·폴더·알림·휴지통 | `notes` 행 | 행 단위 LWW (`updated_at`) | **사람마다 다름** |
-| 스티키 창 상태 | `sticky_windows` | 동기화 안 함 (기기 전용) | – |
+| Body (with formatting) | Yjs document field `content` (Y.XmlFragment, TipTap Collaboration binding) | automatic CRDT merge | one document for all members |
+| Title / body text | `notes.title`, `notes.plain_text` (a **cache** derived from the document) | recomputed on document change | computed by each device |
+| Color, pin, folder, reminder, trash | `notes` row | row-level LWW (`updated_at`) | **different per person** |
+| Sticky window state | `sticky_windows` | not synced (device only) | – |
 
-**로컬 (SQLite)** — `0001_init.sql`(M1) + `0002_yjs.sql`(M3)
+**Local (SQLite)** — `0001_init.sql` (M1) + `0002_yjs.sql` (M3)
 
 ```sql
--- notes: M1 스키마 유지. content 열은 Yjs 전환 후 사용하지 않는다(기존 데이터 변환용으로만 읽음).
-ALTER TABLE notes ADD COLUMN space_id TEXT;         -- 문서가 속한 공간 (개인 공간 / 공유 공간)
+-- notes: M1 schema kept. The content column is no longer used after the Yjs switch (read only for migration).
+ALTER TABLE notes ADD COLUMN space_id TEXT;         -- space the document belongs to (personal / shared)
 
--- Yjs 문서: 압축된 스냅샷 + 그 뒤에 쌓이는 업데이트 로그
+-- Yjs documents: compacted snapshot + update log appended after it
 CREATE TABLE note_docs (
   note_id     TEXT PRIMARY KEY,
   snapshot    TEXT NOT NULL,                        -- base64(Y.encodeStateAsUpdate)
-  synced_sv   TEXT,                                 -- base64(서버가 가진 상태 벡터) → Push 할 차분 계산
+  synced_sv   TEXT,                                 -- base64(state vector the server has) → diff to push
   updated_at  INTEGER NOT NULL
 );
-CREATE TABLE note_doc_updates (                     -- 추가 전용(append-only) → 여러 창이 동시에 써도 유실 없음
+CREATE TABLE note_doc_updates (                     -- append-only → no loss when several windows write at once
   seq         INTEGER PRIMARY KEY AUTOINCREMENT,
   note_id     TEXT NOT NULL,
-  data        TEXT NOT NULL,                        -- base64(Yjs 업데이트)
+  data        TEXT NOT NULL,                        -- base64(Yjs update)
   origin      TEXT NOT NULL,                        -- 'local' | 'remote'
   created_at  INTEGER NOT NULL
 );
 CREATE INDEX idx_doc_updates_note ON note_doc_updates (note_id, seq);
--- 메모 행을 지우면 트리거로 문서·로그도 지운다
+-- deleting a note row deletes its document and log via a trigger
 
--- v1.1 공유 (0003_contacts.sql, 0004_shares.sql) — 모두 기기 안에만 있다. 서버 테이블 없음.
-CREATE TABLE contacts (                             -- 확인 코드로 등록한 친구 기기
-  device_id   TEXT PRIMARY KEY,                     -- iroh 기기 ID (Ed25519 공개키)
-  name        TEXT NOT NULL,                        -- 친구가 정한 표시 이름 (내가 바꿀 수 있음)
+-- v1.1 sharing (0003_contacts.sql, 0004_shares.sql) — device-local only. No server tables.
+CREATE TABLE contacts (                             -- friend devices added with a confirmation code
+  device_id   TEXT PRIMARY KEY,                     -- iroh device ID (Ed25519 public key)
+  name        TEXT NOT NULL,                        -- display name chosen by the friend (I can rename it)
   paired_at   INTEGER NOT NULL,
   last_seen   INTEGER
 );
-CREATE TABLE shares (                               -- 공유 중인 메모 (notes.space_id = note_id 로 표시)
+CREATE TABLE shares (                               -- shared notes (marked by notes.space_id = note_id)
   note_id     TEXT PRIMARY KEY,
-  owner_id    TEXT NOT NULL,                        -- 소유자 기기 ID
-  members     TEXT NOT NULL,                        -- 서명된 멤버 목록 JSON (4.9 참고)
-  version     INTEGER NOT NULL,                     -- 멤버 목록 버전 (클수록 최신)
-  signature   TEXT NOT NULL,                        -- 소유자 기기 키의 서명
+  owner_id    TEXT NOT NULL,                        -- owner device ID
+  members     TEXT NOT NULL,                        -- signed member list JSON (see 4.9)
+  version     INTEGER NOT NULL,                     -- member list version (higher = newer)
+  signature   TEXT NOT NULL,                        -- signature by the owner's device key
   status      TEXT NOT NULL                         -- 'active' | 'left' | 'ended'
 );
-CREATE TABLE share_outbox (                         -- 아직 만나지 못한 친구에게 보낼 공유 제안·멤버 목록 변경
+CREATE TABLE share_outbox (                         -- offers and member-list changes for friends not met yet
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   device_id TEXT NOT NULL, note_id TEXT NOT NULL, kind TEXT NOT NULL, payload TEXT NOT NULL,
   created_at INTEGER NOT NULL
 );
 ```
 
-- **문서 읽기**: `snapshot` + 그 뒤의 `note_doc_updates`를 순서대로 적용
-- **문서 쓰기**: 업데이트 1건을 `note_doc_updates`에 INSERT만 한다 (읽고-수정-쓰기 없음)
-- **압축**: Hub 창이 시작 시·5분마다, 로그가 50건을 넘는 문서를 스냅샷에 합치고 로그를 지운다 (압축은 Hub 한 곳에서만). 업로드 여부는 `synced_sv`로 판단하므로 압축과 무관하다
-- **기존 메모 변환**: M3 첫 실행 시 `content`(TipTap JSON)를 `y-prosemirror`로 Yjs 문서로 바꿔 스냅샷에 저장
+- **Reading a document**: apply `snapshot`, then the following `note_doc_updates` in order
+- **Writing a document**: just INSERT one update into `note_doc_updates` (no read-modify-write)
+- **Compaction**: at startup and every 5 minutes, the hub window merges the log of documents with more than 50 updates into the snapshot and deletes that log (only the hub compacts). Upload state is tracked by `synced_sv`, so compaction does not affect it
+- **Migrating old notes**: on the first M3 run, `content` (TipTap JSON) is converted to a Yjs document with `y-prosemirror` and stored as the snapshot
 
-**서버 (Supabase / Postgres)**
+**Server (Supabase / Postgres)**
 
 ```sql
 create table spaces (
   id uuid primary key,
   kind text not null check (kind in ('personal', 'shared')),
   created_by uuid not null references auth.users,
-  key_version int not null default 1,               -- 공유 공간 키 교체 시 증가
+  key_version int not null default 1,               -- incremented when a shared space's key is rotated
   created_at timestamptz not null default now()
 );
 create table space_members (
@@ -287,13 +281,13 @@ create table space_members (
   primary key (space_id, user_id)
 );
 
--- 본문: 추가 전용 업데이트 로그 + 압축 스냅샷
+-- body: append-only update log + compacted snapshot
 create table doc_updates (
-  seq bigserial primary key,                        -- Pull 커서
+  seq bigserial primary key,                        -- pull cursor
   note_id uuid not null,
   space_id uuid not null references spaces on delete cascade,
-  data bytea not null,                              -- Yjs 업데이트 (공유 공간은 암호문)
-  key_version int,                                  -- null = 암호화 안 함 (개인 공간)
+  data bytea not null,                              -- Yjs update (ciphertext for shared spaces)
+  key_version int,                                  -- null = not encrypted (personal space)
   author uuid not null references auth.users,
   created_at timestamptz not null default now()
 );
@@ -302,399 +296,406 @@ create table doc_snapshots (
   note_id uuid primary key,
   space_id uuid not null references spaces on delete cascade,
   data bytea not null, key_version int,
-  upto_seq bigint not null                          -- 이 seq 까지 포함한 상태
+  upto_seq bigint not null                          -- state including updates up to this seq
 );
 
--- 개인 메타데이터 (사람마다 한 행)
+-- personal metadata (one row per person)
 create table note_meta (
   note_id uuid, user_id uuid references auth.users on delete cascade,
   space_id uuid not null references spaces,
   folder_id uuid, color text not null, pinned boolean not null default false,
   remind_at timestamptz, deleted_at timestamptz,
   created_at timestamptz not null, updated_at timestamptz not null,
-  rev bigint not null,                              -- 서버 sequence, Pull 커서
+  rev bigint not null,                              -- server sequence, pull cursor
   primary key (note_id, user_id)
 );
 
--- RLS: 공간 멤버만 읽기, owner/editor 만 doc_updates 쓰기, note_meta 는 본인 행만
+-- RLS: space members read, only owner/editor write doc_updates, note_meta only own rows
 alter table doc_updates enable row level security;
 create policy "members read" on doc_updates for select
   using (exists (select 1 from space_members m where m.space_id = doc_updates.space_id and m.user_id = auth.uid()));
 create policy "editors write" on doc_updates for insert
   with check (author = auth.uid() and exists (select 1 from space_members m
     where m.space_id = doc_updates.space_id and m.user_id = auth.uid() and m.role in ('owner', 'editor')));
--- doc_snapshots, spaces, space_members, note_meta 도 같은 원칙으로 정책 작성
+-- doc_snapshots, spaces, space_members and note_meta follow the same principles
 ```
 
-### 4.5 동기화 설계
+### 4.5 Sync design
 
-**방식**: 오프라인 우선 + **본문은 Yjs 업데이트 교환(CRDT)**, 메타데이터는 행 단위 LWW. 충돌 사본은 없다.
+**Approach**: offline first + **body synced by exchanging Yjs updates (CRDT)**, metadata with row-level LWW. No conflict copies.
 
-**본문 (Yjs)**
-1. **로컬 편집**: 편집기 → Yjs 업데이트 (200ms 묶음) → `note_doc_updates`에 INSERT (`origin='local'`) → 저장 후 `doc:update` 이벤트로 같은 PC의 다른 창에 전달 → 제목·텍스트 캐시 갱신 (500ms 디바운스)
-2. **Push** (2초 디바운스 / 온라인 복귀 시): 메모별로 `Y.encodeStateAsUpdate(doc, synced_sv)`로 서버에 없는 차분만 만들어 `doc_updates`에 INSERT → 성공 시 `synced_sv` 갱신
-3. **Pull**: `seq > last_seq` 인 내 공간들의 업데이트를 받아 문서에 적용 (`origin='remote'`, `synced_sv`에도 반영) → 열린 창에 `doc:update` 전달 → 캐시 재계산 → `last_seq` 갱신
-   - Yjs 업데이트는 **멱등·순서 무관**이라 중복 수신이나 순서 뒤바뀜이 있어도 결과가 같다
-4. **Realtime**: `doc_updates` INSERT 구독 → 즉시 Pull
-5. **새 기기**: `doc_snapshots` + 그 이후 `doc_updates`만 받는다
-6. **서버 압축**: 메모별 업데이트가 200건을 넘으면, 한 클라이언트가 병합 상태를 `doc_snapshots`에 올리고 `upto_seq` 이하 업데이트를 삭제 (RPC, 공유 공간은 암호화된 스냅샷)
+**Body (Yjs)**
+1. **Local edit**: editor → Yjs update (batched 200 ms) → INSERT into `note_doc_updates` (`origin='local'`) → after saving, send a `doc:update` event to other windows on the same PC → refresh the title/text cache (500 ms debounce)
+2. **Push** (2 s debounce / when back online): per note, build only the diff the server lacks with `Y.encodeStateAsUpdate(doc, synced_sv)` and INSERT it into `doc_updates` → update `synced_sv` on success
+3. **Pull**: fetch updates of my spaces with `seq > last_seq` and apply them (`origin='remote'`, also reflected in `synced_sv`) → send `doc:update` to open windows → recompute caches → update `last_seq`
+   - Yjs updates are **idempotent and order-independent**, so duplicates or reordering give the same result
+4. **Realtime**: subscribe to `doc_updates` INSERTs → pull immediately
+5. **New device**: download only `doc_snapshots` plus later `doc_updates`
+6. **Server compaction**: when a note has more than 200 updates, one client uploads the merged state to `doc_snapshots` and deletes updates up to `upto_seq` (RPC; encrypted snapshot for shared spaces)
 
-**메타데이터 (note_meta)**
-1. 로컬 변경 → `dirty=1` → Push 시 `updated_at`이 서버 값보다 새로울 때만 반영 (행 단위 LWW), 서버가 새 `rev` 부여
-2. Pull: `rev > last_meta_rev` 행 반영 (`dirty=1`인 로컬 행은 `updated_at` 비교)
-3. 색상·핀 같은 값이라 동시 변경 시 마지막 값을 채택해도 데이터 손실 문제가 없다
+**Metadata (note_meta)**
+1. Local change → `dirty=1` → on push, applied only if `updated_at` is newer than the server's (row-level LWW); the server assigns a new `rev`
+2. Pull: apply rows with `rev > last_meta_rev` (compare `updated_at` for local rows with `dirty=1`)
+3. These are values like color and pin, so taking the last value on concurrent changes loses no data
 
-**공통**
-- **삭제**: `deleted_at` 툼스톤으로 전파. 휴지통 30일 경과 후 영구 삭제 (개인 공간 문서·업데이트 삭제)
-- **최초 로그인 시 병합**: 로그인 전 작성한 메모는 개인 공간에 업로드. 다른 기기의 같은 메모는 없으므로(UUID) 덮어쓰기가 일어나지 않는다
-- **암호화**: 개인 메모 서버 동기화(M3b)는 TLS + RLS 보호(서버에서 평문). 개인 공간 종단간 암호화는 v1.2 검토
-- **친구 공유와의 관계**: 친구 공유(4.9)는 서버를 쓰지 않는다. M3b 서버 동기화 없이도 동작하며, 공유 메모는 서버에 올리지 않는다
+**Common**
+- **Deletion**: propagated as `deleted_at` tombstones. Deleted forever after 30 days in the trash (personal-space documents and updates removed)
+- **Merge on first sign-in**: notes written before signing in are uploaded to the personal space. Other devices cannot have the same note (UUIDs), so nothing is overwritten
+- **Encryption**: server sync of personal notes (M3b) is protected by TLS + RLS (plaintext on the server). End-to-end encryption of the personal space is considered for v1.2
+- **Relation to friend sharing**: friend sharing (4.9) uses no server. It works without M3b server sync, and shared notes are never uploaded to a server
 
-**동기화 상태 머신**
+**Sync state machine**
 ```
-Idle ──변경/타이머──▶ Pushing ──▶ Pulling ──▶ Idle
-  │                     │ 실패                │
-  └─오프라인 감지──▶ Offline ◀──────────────────┘ (지수 백오프 재시도: 2s, 4s, 8s … 최대 5분)
+Idle ──change/timer──▶ Pushing ──▶ Pulling ──▶ Idle
+  │                       │ failure             │
+  └──offline detected──▶ Offline ◀──────────────┘ (exponential backoff: 2s, 4s, 8s … up to 5 min)
 ```
 
-### 4.6 데스크톱 창 관리
+### 4.6 Desktop window management
 
-| 창 종류 | 라벨 | 특성 |
+| Window | Label | Properties |
 |---|---|---|
-| Hub (목록) | `hub` | 일반 창, 닫으면 트레이로 숨김 |
-| Sticky | `sticky-{noteId}` | `decorations:false`, `transparent:true`, `skipTaskbar:true`, 최소 200×160 |
-| Settings | `settings` | 모달형 일반 창 |
+| Hub (list) | `main` | regular window; closing hides it to the tray |
+| Sticky | `sticky-{noteId}` | `decorations:false`, `transparent:true`, `skipTaskbar:true`, minimum 200×160 |
 
-- **열기**: 이미 열린 창이면 포커스, 아니면 `sticky_windows`에 저장된 위치로 생성 (없으면 마우스 근처 계단식 배치)
-- **위치 저장**: move/resize 이벤트 300ms 디바운스 후 저장
-- **화면 밖 보정**: 모니터 구성이 바뀌면 화면 밖에 있는 창을 주 모니터 안으로 이동
-- **시작 시 복원**: `is_open=1`인 메모 창을 모두 복원
-- **트레이**: 새 메모 / 모든 메모 보이기 / 모두 숨기기 / 목록 열기 / 동기화 상태 / 설정 / 종료
+- **Open**: focus the window if it is already open; otherwise create it at the position saved in `sticky_windows` (or cascade near the mouse if none)
+- **Save position**: save 300 ms after move/resize events
+- **Off-screen correction**: if the monitor layout changes, move windows that are off screen back onto the primary monitor
+- **Restore at startup**: reopen every note window with `is_open=1`
+- **Tray**: new note / show all notes / hide all / open list / start at login / quit
+- **Quit**: every quit path (tray, ⌘Q on macOS, logout) first tells all windows to save pending input
+- **Per-OS differences** (shortcuts, tray, Wayland limits): see the "Per-OS differences" table in the README
 
-### 4.7 알림 설계
-- 데스크톱: 앱(트레이) 실행 중 Hub 가 남은 알림 목록을 Rust 스케줄러(`reminders.rs`)에 넘긴다 → 시각이 되면 OS 알림 + 그 메모를 스티키 창으로 열고 알림을 지운다 (한 번만 울림). Windows 알림의 클릭 콜백은 지원되지 않아 스티키 창을 바로 띄우는 방식으로 대신한다
-- 알림 시각 변경은 목록 순서(수정 시각)를 바꾸지 않는다. 휴지통의 메모는 울리지 않는다
-- 모바일: `remind_at` 설정 시 OS 로컬 알림 예약, 변경·삭제 시 예약 갱신·취소
-- 동기화로 다른 기기에서 받은 알림도 각 기기에서 재예약
-- 이미 지난 알림은 앱 시작 시 "놓친 알림"으로 1회 표시
+### 4.7 Reminders
+- Desktop: while the app (tray) is running, the hub passes the list of upcoming reminders to the Rust scheduler (`reminders.rs`) → at the time it shows an OS notification, opens the note as a sticky window and clears the reminder (fires once). Notification click callbacks are not supported on Windows, so the sticky window is opened directly instead
+- Changing a reminder time does not change the list order (modified time). Notes in the trash do not fire
+- Mobile: schedule an OS local notification when `remind_at` is set; reschedule or cancel on change or deletion
+- Reminders received from other devices via sync are rescheduled on each device
+- Reminders that passed while the app was closed are shown once as "missed" at startup
 
-### 4.8 보안
-- Supabase Auth (이메일 OTP / Google OAuth, PKCE + 딥링크 `urinote://auth`)
-- 리프레시 토큰은 OS 보안 저장소 (Windows Credential Manager / Keychain / Android Keystore)
-- 모든 테이블 RLS 적용, `service_role` 키는 클라이언트에 절대 포함하지 않음
-- 회원 탈퇴 시 서버 데이터 cascade 삭제
-- (P2) 잠금 메모: 기기별 키로 본문 AES-GCM 암호화 후 동기화
+### 4.8 Security
+- Supabase Auth (email OTP / Google OAuth, PKCE + deep link `urinote://auth`)
+- Refresh tokens in the OS secure store (Windows Credential Manager / Keychain / Android Keystore)
+- RLS on every table; the `service_role` key is never included in the client
+- Server data deleted by cascade when an account is deleted
+- (P2) Locked notes: body encrypted with AES-GCM using a per-device key before syncing
+- Content Security Policy: scripts only from the app bundle; no plugins, frames or forms
+- Before migrations, the app backs up `urinote.db` once per app version change (latest 5 kept)
+- Error log (`urinote.log`) records errors and context only, never note contents
 
 ---
 
-### 4.9 친구 공유 설계 (v1.1) — 같은 Wi-Fi 전용, 서버 없음
+### 4.9 Friend sharing (v1.1) — same Wi-Fi only, no server
 
-**결정 사항**: 공유 형태 = **실시간 공동 편집**, 전송 = **같은 Wi-Fi(로컬 네트워크) 안에서 기기끼리 직접 연결**, 서버·계정 = **없음**, 공유 단위 = 메모 1개 (폴더 공유는 v1.2)
+**Decisions**: sharing model = **real-time co-editing**; transport = **direct device-to-device connections within the same Wi-Fi (local network)**; server/account = **none**; unit of sharing = one note (folder sharing in v1.2)
 
-#### 4.9.1 한눈에 보기
-> 같은 Wi-Fi에 있는 친구 기기를 찾아 **6자리 확인 코드**로 친구 등록을 한다. 메모를 공유하면 친구가 수락한 뒤부터 **둘이 같은 Wi-Fi에 있는 동안 실시간으로 함께 편집**한다. 떨어져 있는 동안 각자 고친 내용은 **다시 같은 Wi-Fi에서 만나면 자동으로 합쳐진다**(Yjs). 메모는 서버를 거치지 않고 **우리 기기 안에만** 있다.
+#### 4.9.1 At a glance
+> Find a friend's device on the same Wi-Fi and add them as a friend with a **6-digit confirmation code**. When a note is shared and the friend accepts, the two of you **co-edit in real time while on the same Wi-Fi**. Changes made while apart **merge automatically when you meet again on the same Wi-Fi** (Yjs). Notes never pass through a server; they live **only on our own devices**.
 
-| 할 수 있는 것 | 할 수 없는 것 (B 방식의 한계) |
+| Can do | Cannot do (limits of this approach) |
 |---|---|
-| 같은 Wi-Fi의 친구와 실시간 공동 편집, 상대 커서 표시 | 다른 네트워크에 있는 친구와 실시간 편집 |
-| 오프라인으로 각자 편집 → 만나면 자동 병합 | 만나지 않은 친구에게 변경 전달 (다른 멤버가 중간에서 전해 주는 것은 가능, 4.9.5) |
-| 3명 이상 공유 (최대 10대) | 기기 간 통신을 막는 Wi-Fi(공공 Wi-Fi·일부 회사 망)에서의 자동 발견 → 수동 연결로 대체 (4.9.9) |
-| 편집 / 보기 전용 권한, 내보내기 | 이미 넘겨준 사본의 회수 |
+| Real-time co-editing with friends on the same Wi-Fi, showing their cursor | Real-time editing with friends on another network |
+| Edit separately offline → merge automatically when meeting | Deliver changes to a friend you never meet (relaying by another member is possible, 4.9.5) |
+| Share with 3 or more people (up to 10 devices) | Auto-discovery on Wi-Fi that blocks device-to-device traffic (public Wi-Fi, some office networks) → manual connection instead (4.9.9) |
+| Edit / view-only permissions, removing members | Recalling copies already handed over |
 
-#### 4.9.2 구성 요소
+#### 4.9.2 Components
 ```
-┌──────────── 내 PC (Urinote) ─────────────┐            ┌──── 친구 PC ────┐
-│ Hub 창 (JS)                               │            │                 │
-│  ShareEngine: 친구·멤버 목록, 권한 검사,  │            │   (같은 구성)   │
-│   Yjs 동기화 프로토콜, 커서               │            │                 │
-│        ▲ Tauri command / event            │            │                 │
-│ Rust: p2p 모듈                            │  QUIC+TLS  │                 │
-│  - iroh Endpoint (릴레이 끔)              │◀══════════▶│                 │
-│  - mDNS 발견 `_urinote._udp.local`        │  같은 Wi-Fi │                 │
-│  - 기기 키 (OS 보안 저장소), 서명/검증    │            │                 │
-└───────────────────────────────────────────┘            └─────────────────┘
+┌────────────── My PC (Urinote) ─────────────┐            ┌── Friend's PC ──┐
+│ Hub window (JS)                             │            │                 │
+│  ShareEngine: friends & members, permission │            │ (same layout)   │
+│   checks, Yjs sync protocol, cursors        │            │                 │
+│        ▲ Tauri command / event              │            │                 │
+│ Rust: p2p module                            │  QUIC+TLS  │                 │
+│  - iroh Endpoint (relays off)               │◀══════════▶│                 │
+│  - mDNS discovery `_urinote._udp.local`     │ same Wi-Fi │                 │
+│  - device key (OS secure store), sign/verify│            │                 │
+└─────────────────────────────────────────────┘            └─────────────────┘
 ```
-- **Rust**는 네트워크만 담당한다: 발견, 연결, 메시지 송수신(길이 접두 프레임), 서명/검증, 기기 키 보관. 메모 내용은 해석하지 않는다.
-- **ShareEngine(JS)**는 Hub 창에서 하나만 돈다 (단일 인스턴스, Hub는 숨겨져도 실행 중). 스티키 창과는 기존 `doc:update` 이벤트로 연결된다.
-  - 받은 업데이트 → `note_doc_updates`에 `origin='remote'`로 저장 → `doc:update`(source=`p2p`) 발행 → Hub·스티키 편집기에 실시간 반영 → 제목·텍스트 캐시 재계산
-  - 내 창들의 `doc:update` → 연결된 멤버 기기에 전송
-- 연결은 **기기 쌍마다 1개**이고, 그 안에서 여러 공유 메모를 함께 주고받는다.
+- **Rust** handles only the network: discovery, connections, sending/receiving messages (length-prefixed frames), signing/verification and storing the device key. It does not interpret note contents.
+- **ShareEngine (JS)** runs once, in the hub window (single instance; the hub keeps running while hidden). It talks to sticky windows through the existing `doc:update` event.
+  - Received update → stored in `note_doc_updates` with `origin='remote'` → `doc:update` (source=`p2p`) → applied live in hub and sticky editors → title/text cache recomputed
+  - `doc:update` from my windows → sent to connected member devices
+- There is **one connection per device pair**, carrying all shared notes between them.
 
-#### 4.9.3 기기 ID와 친구 등록
-- 각 기기는 첫 실행 때 **Ed25519 키쌍**을 만든다. 공개키가 곧 **기기 ID**이고 비밀키는 OS 보안 저장소에 둔다. 계정은 없다.
-- iroh 연결은 TLS로 **상대가 그 기기 ID의 비밀키를 가졌는지 확인**하므로, 연결된 상대의 기기 ID는 위조할 수 없다.
-- **친구 등록 (처음 한 번)**:
-  1. 두 사람이 "친구 추가"를 연다 → 이때만 mDNS에 **표시 이름**을 광고한다 (평소에는 기기 ID만 광고)
-  2. A가 목록에서 B를 고른다 → B에게 "A님의 친구 요청" 표시
-  3. 서로 **임의값 커밋 → 공개** 순서로 교환한 뒤(블루투스 숫자 비교 방식), 두 화면에 `코드 = H(기기ID_A, 기기ID_B, 임의값_A, 임의값_B)`의 **6자리**를 표시한다
-  4. 두 사람이 코드가 같은지 눈으로 확인하고 [확인] → `contacts`에 저장
-  - 커밋을 먼저 받으므로, 중간자가 코드를 맞추려고 키를 바꿔 가며 시도할 수 없다.
-- 친구가 기기를 여러 대 쓰면 **기기마다 등록**한다 (v1.2: 한 사람의 기기 묶기).
+#### 4.9.3 Device IDs and adding friends
+- Each device creates an **Ed25519 key pair** on first run. The public key is the **device ID** and the secret key is kept in the OS secure store. There are no accounts.
+- iroh connections use TLS to **verify that the peer holds the secret key of its device ID**, so the device ID of a connected peer cannot be forged.
+- **Adding a friend (once)**:
+  1. Both people open "Add a friend" → only then is a **display name** advertised over mDNS (normally only the device ID is advertised)
+  2. A picks B from the list → B sees "Friend request from A"
+  3. They exchange **random-value commitments, then reveal them** (Bluetooth numeric-comparison style), and both screens show the **6 digits** of `code = H(deviceID_A, deviceID_B, random_A, random_B)`
+  4. Both people check that the codes match and press [Yes] → saved in `contacts`
+  - Because commitments come first, a man in the middle cannot try different keys to make the codes match.
+- If a friend uses several devices, **each device is added separately** (v1.2: grouping one person's devices).
 
-#### 4.9.4 공유 흐름
-1. **공유 시작**: 메모 → [공유] → 친구(기기) 선택 + 권한(편집 / 보기 전용)
-   - 내 기기가 **멤버 목록 v1**을 만들고 서명한다. 메모는 공유 상태가 된다 (`notes.space_id = note_id`, `shares` 행 추가)
-   - 각 친구에게 보낼 **공유 제안**(멤버 목록 + 제목 + 문서 전체 상태)을 `share_outbox`에 넣는다
-2. **전달**: 그 친구 기기와 같은 Wi-Fi에서 연결되는 순간 제안을 보낸다 (지금 없으면 만날 때까지 대기)
-3. **수락**: 친구 화면에 "A님이 메모 '장보기'를 공유했습니다 [수락] [거절]" → 수락하면 친구 기기에 메모가 생기고 동기화가 시작된다 → 거절하면 A에게 알림, A의 멤버 목록에서 빠진다
-4. **공동 편집**: 멤버 기기끼리 연결되어 있으면 편집이 바로 전송되고(목표 300ms 이내) 상대 커서·이름이 보인다
-5. **멤버 관리 (소유자만)**: 멤버 추가·권한 변경·내보내기 → 새 버전 멤버 목록에 서명 → 연결되는 멤버마다 전달 (멤버끼리도 서로 전달)
-6. **나가기 / 종료**: 4.9.7
+#### 4.9.4 Sharing flow
+1. **Start sharing**: note → [Share] → pick friend devices + permission (edit / view only)
+   - My device creates **member list v1** and signs it. The note becomes shared (`notes.space_id = note_id`, a `shares` row is added)
+   - A **share offer** (member list + title + full document state) for each friend goes into `share_outbox`
+2. **Delivery**: the offer is sent the moment that friend's device connects on the same Wi-Fi (it waits until they meet)
+3. **Accept**: the friend sees "A shared 'Groceries' with you [Decline] [Accept]" → accepting creates the note on their device and starts syncing → declining notifies A and removes them from A's member list
+4. **Co-editing**: while member devices are connected, edits are sent immediately (target ≤ 300 ms) and the other person's cursor and name are shown
+5. **Managing members (owner only)**: add members, change permissions, remove → sign a new member-list version → delivered to each member on connection (members also relay it to each other)
+6. **Leave / end**: see 4.9.7
 
-#### 4.9.5 동기화 프로토콜
-연결 직후와 이후에 주고받는 메시지 (QUIC 스트림, ALPN `urinote/share/1`, 메시지당 최대 4MB):
+#### 4.9.5 Sync protocol
+Messages exchanged right after connecting and afterwards (QUIC streams, ALPN `urinote/share/1`, up to 4 MB per message):
 
-| 메시지 | 내용 | 시점 |
+| Message | Contents | When |
 |---|---|---|
-| `hello` | 앱 버전, 내가 가진 공유 메모 목록과 각 멤버 목록 버전 | 연결 직후 |
-| `membership` | 서명된 멤버 목록 (상대가 가진 것보다 새 버전일 때) | `hello` 비교 후, 변경 시 |
-| `offer` / `offer-reply` | 공유 제안 / 수락·거절 | 대기 중인 제안이 있을 때 |
-| `sync-step1` | 메모 ID + 내 Yjs 상태 벡터 | 공통 공유 메모마다 |
-| `sync-step2` | 상대에게 없는 차분 (`Y.encodeStateAsUpdate(doc, 상대 상태 벡터)`) | step1 수신 시 |
-| `update` | 새 편집 (Yjs 업데이트) | 편집할 때마다 (200ms 묶음) |
-| `awareness` | 커서 위치 (저장하지 않음, 다른 멤버를 거쳐 전하지 않음) | 편집기 열려 있을 때 (80ms 묶음) |
-| `leave` | 공유 나가기 알림 | 나갈 때 |
+| `hello` | app version, my shared notes and each member-list version | right after connecting |
+| `membership` | signed member list (when newer than the peer's) | after comparing `hello`, on change |
+| `offer` / `offer-reply` | share offer / accept or decline | when an offer is pending |
+| `sync-step1` | note ID + my Yjs state vector | for each common shared note |
+| `sync-step2` | the diff the peer lacks (`Y.encodeStateAsUpdate(doc, peer state vector)`) | on receiving step 1 |
+| `update` | new edits (Yjs update) | on each edit (batched 200 ms) |
+| `awareness` | cursor position (not stored, not relayed through other members) | while an editor is open (batched 80 ms) |
+| `leave` | notice of leaving the share | when leaving |
 
-- **다른 멤버를 통한 전달**: A·B·C가 멤버일 때, A와 B가 만나 동기화한 뒤 B가 C를 만나면 C는 A의 편집도 받는다. Yjs 업데이트는 중복·순서 무관하게 같은 결과를 내므로, 누가 전달하든 상관없다.
+- **Relaying through other members**: with members A, B and C, after A and B meet and sync, C receives A's edits when B later meets C. Yjs updates give the same result regardless of duplicates or order, so it does not matter who relays them.
 
-#### 4.9.6 권한 규칙
-멤버 목록은 다음 형식이며, **소유자 기기 키로 서명**한다:
+#### 4.9.6 Permission rules
+The member list has this format and is **signed with the owner's device key**:
 ```json
-{ "noteId": "…", "version": 3, "owner": "<기기ID>", "status": "active",
-  "members": [ { "id": "<기기ID>", "name": "민지 PC", "role": "owner" },
-               { "id": "<기기ID>", "name": "준호 노트북", "role": "editor" },
-               { "id": "<기기ID>", "name": "서연 폰", "role": "viewer" } ],
+{ "noteId": "…", "version": 3, "owner": "<deviceID>", "status": "active",
+  "members": [ { "id": "<deviceID>", "name": "Minji PC", "role": "owner" },
+               { "id": "<deviceID>", "name": "Junho laptop", "role": "editor" },
+               { "id": "<deviceID>", "name": "Seoyeon phone", "role": "viewer" } ],
   "issuedAt": 1730100000000 }
 ```
-- 멤버 목록은 **서명이 소유자 것이고 버전이 더 클 때만** 받아들인다 → 다른 멤버를 거쳐 와도 위조할 수 없다.
-- 각 기기는 **자신이 아는 최신 멤버 목록**으로 판단한다:
-  - **문서 데이터(`sync-step2`, `update`)는 owner·editor 기기에게서만 받는다.** 보기 전용 기기가 보낸 데이터는 버린다. 연결 상대의 기기 ID는 TLS로 확인된 값이므로 속일 수 없다.
-  - 문서 데이터는 멤버 목록에 있는 기기에게만 보낸다 (보기 전용 포함). 목록에서 빠진 기기와는 그 메모를 동기화하지 않는다.
-  - 보기 전용 기기의 편집기는 읽기 전용이다.
-- 편집자 기기가 보기 전용 기기의 데이터를 받지 않으므로, 전달되는 문서에는 편집 권한자의 편집만 들어 있다.
-- **변경이 전파되는 동안의 공백**: 내보내기 이후에도 새 멤버 목록을 아직 받지 못한 기기는 내보낸 기기와 계속 동기화할 수 있다. 이 공백은 화면에 "변경 사항이 모든 멤버에게 전달되기 전까지 적용되지 않을 수 있음"으로 안내한다.
+- A member list is accepted **only if it is signed by the owner and has a higher version** → it cannot be forged even when relayed through other members.
+- Each device decides using **the newest member list it knows**:
+  - **Document data (`sync-step2`, `update`) is accepted only from owner and editor devices.** Data sent by view-only devices is dropped. The peer's device ID is verified by TLS and cannot be faked.
+  - Document data is sent only to devices on the member list (including view-only). Devices removed from the list are no longer synced for that note.
+  - On view-only devices the editor is read-only.
+- Since editor devices never accept data from view-only devices, relayed documents only contain edits by members with edit permission.
+- **Gap while changes propagate**: after a removal, devices that have not received the new member list yet may keep syncing with the removed device. The UI explains this as "changes may not apply until they reach every member".
 
-#### 4.9.7 휴지통·삭제 규칙 (공유 메모)
-| 동작 | 결과 |
+#### 4.9.7 Trash and deletion rules (shared notes)
+| Action | Result |
 |---|---|
-| 휴지통으로 이동 | **나에게서만 숨김**. 동기화는 계속되며 복원 가능 |
-| 영구 삭제 (멤버) | **공유 나가기**: 다른 멤버에게 `leave` 알림 → 소유자 기기가 다음 멤버 목록에서 제외 → 내 기기에서 삭제 |
-| 영구 삭제 (소유자) | **공유 종료**: `status: "ended"` 멤버 목록에 서명해 전달 → 다른 멤버의 메모는 개인 메모로 바뀌고 안내 문구 표시 (지우려면 평소처럼 삭제) |
-| 빈 메모 자동 삭제 | 공유 메모에는 적용하지 않는다 (친구가 막 만든 빈 메모 보호) |
-| 개인 설정 (색상·고정·폴더·알림·스티키 위치) | 공유하지 않는다. 사람마다 따로 |
+| Move to trash | **Hidden only for me.** Syncing continues and it can be restored |
+| Delete forever (member) | **Leave the share**: `leave` sent to other members → the owner's device drops me from the next member list → deleted on my device |
+| Delete forever (owner) | **End sharing**: a member list with `status: "ended"` is signed and sent → other members' copies become personal notes with a notice (delete them as usual if wanted) |
+| Auto-deleting empty notes | Not applied to shared notes (protects an empty note a friend just created) |
+| Personal settings (color, pin, folder, reminder, sticky position) | Not shared; separate per person |
 
-- 소유자 기기를 잃어버리면 멤버 목록을 더 이상 바꿀 수 없다 (편집은 계속 가능). 소유권 넘기기는 v1.2.
+- If the owner loses their device, the member list can no longer be changed (editing continues). Ownership transfer is v1.2.
 
-#### 4.9.8 무엇을 보호하는가 (위협 모델)
-| 누가 | 볼 수 있는 것 | 할 수 없는 것 |
+#### 4.9.8 What is protected (threat model)
+| Who | Can see | Cannot do |
 |---|---|---|
-| 같은 Wi-Fi의 다른 사람 | Urinote 기기가 있다는 사실, 기기 ID (친구 추가 모드일 때는 표시 이름) | 메모 내용 보기 (TLS 암호화), 친구인 척 끼어들기 (기기 ID + 확인 코드) |
-| 보기 전용 멤버 | 공유 메모 내용 | 편집 (모든 기기가 거부) |
-| 내보낸 멤버 | 내보내기 전까지 받은 내용 (회수 불가) | 이후 변경 받기 (목록이 전파된 기기부터) |
-| 잃어버린 기기를 주운 사람 | 기기 안 메모 (OS 로그인 보호에 의존, 메모 잠금은 v1.2) | – → 다른 멤버가 그 기기를 내보내기 |
-| 서버·운영자 | **해당 없음 (서버 없음)** | – |
+| Others on the same Wi-Fi | That a Urinote device exists, its device ID (and display name while in Add-a-friend mode) | Read notes (TLS encryption), pose as a friend (device ID + confirmation code) |
+| View-only members | Shared note contents | Edit (rejected by every device) |
+| Removed members | What they received before removal (cannot be recalled) | Receive later changes (from devices that have the new list) |
+| Someone who finds a lost device | Notes on the device (relies on OS login protection; note lock is v1.2) | – → other members remove that device |
+| Server / operator | **Not applicable (no server)** | – |
 
-#### 4.9.9 네트워크 제약과 대응
-- **자동 발견이 안 되는 망** (공공 Wi-Fi의 기기 간 차단, mDNS 차단): 친구 추가 화면에서 **연결 코드(기기 ID + 로컬 주소)를 복사해 메신저 등으로 교환**하고 붙여넣어 직접 연결한다. 모바일(M4)에서는 같은 정보를 QR로 보여 주고 카메라로 읽는다. 기기 간 통신 자체를 막는 망에서는 공유가 동작하지 않는다.
-- **방화벽**: Windows는 첫 실행 시 "개인 네트워크 허용" 팝업이 뜬다. 설치 프로그램이 개인 네트워크용 방화벽 규칙을 추가한다. 공용 네트워크에서는 기본적으로 끈다.
-- **모바일**: 앱이 화면에 열려 있을 때만 연결·동기화된다 (M4 이후).
-- **남용 방지**: 메시지 크기 4MB, 기기당 초당 메시지 수 제한, 공유 메모당 멤버 10대, 친구가 아닌 기기의 연결은 친구 추가 모드에서만 받는다. 친구 추가 모드에서 연결된 친구 아닌 기기의 공유 메시지는 버린다. 답하지 않은 공유 제안은 친구당 10개·전체 50개까지.
-- **커서 표시 (S4)**: 각 창의 커서는 Hub 를 거쳐 바로 연결된 멤버에게만 간다 (보기 전용 멤버 포함). 받은 커서는 Hub 가 검사한다:
-  - 메시지 16KB, 항목 8개, 친구 1대당 메모마다 커서 8개까지
-  - 커서 ID 는 처음 보낸 기기의 것 → 다른 친구나 내 창의 커서를 옮기거나 지울 수 없다
-  - 커서 위치 외의 필드는 버리고, 이름·색은 내 친구 목록 이름과 기기 ID 로 정한 색으로 붙인다 (이름 사칭 방지)
-  - 연결이 끊기면 그 친구 커서를 바로 지운다 (그 밖에는 30초 동안 소식이 없으면 사라짐)
+#### 4.9.9 Network limits and responses
+- **Networks where discovery fails** (client isolation on public Wi-Fi, blocked mDNS): in Add a friend, **copy a connection code (device ID + local address), exchange it via a messenger** and paste it to connect directly. On mobile (M4) the same information is shown as a QR code and read with the camera. Networks that block device-to-device traffic entirely cannot share.
+- **Firewall**: Windows shows an "allow on private networks" prompt on first run. The installer adds a firewall rule for private networks; off by default on public networks. On macOS the user allows "Local Network" access on first run (Info.plist declares `_urinote._udp`).
+- **Mobile**: connects and syncs only while the app is open on screen (from M4).
+- **Abuse limits**: 4 MB per message, a per-device message rate limit, 10 devices per shared note, and connections from non-friend devices accepted only in Add-a-friend mode. Share messages from non-friend devices connected in that mode are dropped. Unanswered share offers are capped at 10 per friend and 50 in total.
+- **Cursors (S4)**: each window's cursor goes through the hub only to directly connected members (including view-only). The hub checks received cursors:
+  - at most 16 KB per message, 8 entries, and 8 cursors per friend device per note
+  - a cursor ID belongs to the device that first sent it → nobody can move or remove another friend's or my own window's cursor
+  - fields other than the cursor position are dropped; name and color are taken from my friend list and the device ID (prevents name spoofing)
+  - a friend's cursor is removed immediately on disconnect (otherwise it disappears after 30 s without updates)
 
-#### 4.9.10 이전 설계(v0.2, 서버 중계) 검토 지적 사항 처리
-| # | 지적 | B 방식에서 |
+#### 4.9.10 Review findings on the previous design (v0.2, server relay)
+| # | Finding | In this design |
 |---|---|---|
-| 1 | 서버가 가짜 기기 키를 끼워 넣을 수 있음 | **해당 없음** — 서버가 없고, 기기 등록은 확인 코드로만 |
-| 2 | 공유 대칭키라 발신자를 확인할 수 없음 | **해결** — 연결 상대를 TLS로 확인 + 서명된 멤버 목록으로 권한 검사 (4.9.6) |
-| 3 | 초대 링크 ID만으로 멤버가 될 수 있음 | **해당 없음** — 초대 링크 없이 친구 기기에 직접 제안 |
-| 4 | 작성자만 업로드해 내용 유실 | **해결** — 어느 멤버든 Yjs 동기화로 전달 (4.9.5) |
-| 5 | 추방 후 키 교체 문제 | **해당 없음** — 공유 키가 없고, 내보낸 기기와는 연결해도 동기화하지 않음 |
-| 6 | 서버 압축 경쟁 | **해당 없음** — 로컬 압축만 (M3a, Hub 단일) |
-| 7 | 휴지통·삭제 의미 불명확 | **해결** — 4.9.7 |
-| 8 | 공유 전환 시 서버 평문 기록 | **해결** — 공유 메모는 서버 동기화(M3b) 대상에서 제외 |
-| 9 | 연결 단위 불명확 | **해결** — 기기 쌍당 1연결, 최대 10대 |
-| 10 | 위협 모델 없음 | **해결** — 4.9.8 |
-| 11 | 키 보관·복구 | **해결** — OS 보안 저장소. 기기를 모두 잃으면 새 기기로 다시 친구 등록 + 소유자가 멤버로 추가 |
-| 12 | 남용 방지 | **해결** — 4.9.9 |
-| 추가 | 확인 코드 무차별 대입 (키를 바꿔 같은 코드 만들기) | **해결** — 임의값 커밋 후 공개 (4.9.3) |
+| 1 | The server could inject fake device keys | **N/A** — no server; devices are added only via confirmation codes |
+| 2 | A shared symmetric key cannot identify the sender | **Resolved** — peers verified by TLS + permission checks on signed member lists (4.9.6) |
+| 3 | Anyone with an invite link ID could become a member | **N/A** — no invite links; offers go directly to friend devices |
+| 4 | Only the author uploads, so content can be lost | **Resolved** — any member relays via Yjs sync (4.9.5) |
+| 5 | Key rotation after removing a member | **N/A** — no shared key; removed devices are not synced even if connected |
+| 6 | Server compaction races | **N/A** — local compaction only (M3a, hub only) |
+| 7 | Unclear meaning of trash and deletion | **Resolved** — 4.9.7 |
+| 8 | Plaintext stored on the server when switching to shared | **Resolved** — shared notes are excluded from server sync (M3b) |
+| 9 | Unclear connection unit | **Resolved** — one connection per device pair, up to 10 devices |
+| 10 | No threat model | **Resolved** — 4.9.8 |
+| 11 | Key storage and recovery | **Resolved** — OS secure store. If every device is lost, add the new device as a friend again and have the owner add it as a member |
+| 12 | Abuse prevention | **Resolved** — 4.9.9 |
+| extra | Brute-forcing the confirmation code (changing keys to produce the same code) | **Resolved** — commit, then reveal random values (4.9.3) |
 
 ---
 
-## 5. 화면 설계
+## 5. Screen design
 
-### 5.1 디자인 원칙
-- 종이 질감의 부드러운 파스텔 색상, 넉넉한 여백
-- 메모 색상이 곧 UI 테마 (스티키 창 상단 바·툴바가 메모 색을 따름)
-- 다크 모드에서는 색상을 채도 낮춘 톤으로 자동 변환
+### 5.1 Design principles
+- Soft pastel colors with a paper feel, generous spacing
+- The note color is the UI theme (the sticky window's top bar and toolbar follow the note color)
+- In dark mode colors switch automatically to lower-saturation tones
 
-### 5.2 데스크톱 화면
+### 5.2 Desktop screens
 
-**스티키 노트 창**
+**Sticky note window**
 ```
 ┌──────────────────────────────┐
-│ +                    ⋯    ×  │ ← 드래그 영역 (메모 색상), ⋯: 색상·항상 위·투명도·알림·삭제
+│ +                    ⋯    ×  │ ← drag area (note color); ⋯: color, always on top, opacity, reminder, delete
 ├──────────────────────────────┤
-│ 장보기                        │
-│ ☐ 우유                        │
-│ ☑ 계란                        │
+│ Groceries                     │
+│ ☐ Milk                        │
+│ ☑ Eggs                        │
 │                              │
 ├──────────────────────────────┤
-│ B  I  U  S  •  ☐   🔔         │ ← 포커스 시에만 표시
+│ B  I  U  S  •  ☐              │ ← shown only while focused
 └──────────────────────────────┘
 ```
 
-**Hub (목록) 창**
+**Hub (list) window**
 ```
 ┌───────────────────────────────────────────┐
-│ Urinote                    ⟳ 동기화됨  ⚙   │
-│ [🔍 검색                              ]   │
-│ 전체 · 📌고정 · 📁업무 · 📁개인 · 🗑휴지통  │
+│ Urinote                        👥  ⚙  +   │
+│ [🔍 Search                            ]   │
+│ All · Pinned · Trash                       │
+│ All folders · Work · Personal · + Folder   │
 ├───────────────────────────────────────────┤
-│ ▌장보기               오전 10:21          │
-│ ▌우유, 계란 …                             │
-│ ▌회의 메모            어제                │
-│ ▌3분기 목표 정리 …                        │
+│ ▌Groceries            10:21 AM            │
+│ ▌Milk, eggs …                             │
+│ ▌Meeting notes        Yesterday           │
+│ ▌Q3 goals …                               │
 └───────────────────────────────────────────┘
-          (더블클릭 → 스티키 창으로 열기)
+      (double-click → open as a sticky window)
 ```
 
-### 5.3 모바일 화면
+### 5.3 Mobile screens
 ```
 ┌──────────────────┐   ┌──────────────────┐
-│ Urinote   🔍  ⚙  │   │ ‹        🎨 🔔 ⋯ │
-│ 전체 업무 개인 … │   │ 장보기           │
-│ ┌──────┐┌──────┐ │   │ ☐ 우유           │
-│ │장보기││회의  │ │   │ ☑ 계란           │
-│ │우유…││목표…│ │   │                  │
+│ Urinote   🔍  ⚙  │   │ ‹        🎨 ⏰ ⋯ │
+│ All Work Personal│   │ Groceries        │
+│ ┌──────┐┌──────┐ │   │ ☐ Milk           │
+│ │Groc. ││Meet. │ │   │ ☑ Eggs           │
+│ │Milk… ││Goals…│ │   │                  │
 │ └──────┘└──────┘ │   │                  │
 │ ┌──────┐         │   │                  │
-│ │아이디어│      ⊕ │   │ B I U • ☐       │
+│ │Ideas │       ⊕ │   │ B I U • ☐        │
 │ └──────┘         │   └──────────────────┘
-└──────────────────┘      편집 화면
-   목록 (그리드)
+└──────────────────┘       editor
+    list (grid)
 ```
 
-### 5.4 주요 사용자 흐름
-1. **첫 실행**: 환영 화면 → "로그인 없이 시작" 또는 "로그인하고 동기화" → 샘플 메모 1개 표시
-2. **빠른 메모 (데스크톱)**: `Ctrl+Alt+N` → 커서 근처에 새 스티키 창 → 입력 → 자동 저장
-3. **이어 쓰기 (모바일)**: 앱 열기 → PC에서 쓴 메모가 목록 최상단 → 편집 → PC 스티키 창에 즉시 반영
-4. **친구와 공유 (같은 Wi-Fi)**:
+### 5.4 Key user flows
+1. **First run**: welcome → "Start without signing in" or "Sign in and sync" → one sample note
+2. **Quick note (desktop)**: `Ctrl+Alt+N` → new sticky window near the cursor → type → saved automatically
+3. **Continue on mobile**: open the app → the note written on the PC is at the top → edit → reflected in the PC sticky window immediately
+4. **Share with a friend (same Wi-Fi)**:
    ```
-   ① 친구 추가                ② 메모 공유                  ③ 친구 화면                 ④ 함께 편집
+   ① Add a friend             ② Share a note               ③ Friend's screen            ④ Edit together
    ┌──────────────────┐   ┌──────────────────────┐   ┌──────────────────────┐   ┌──────────────────────┐
-   │ 근처의 Urinote    │   │ '장보기' 공유         │   │ 민지 PC 님이 메모     │   │ 장보기     👥 2  ● 연결│
-   │ ○ 준호 노트북  ▶ │   │ ☑ 준호 노트북 [편집▾]│   │ '장보기'를 공유했어요 │   │ ☐ 우유               │
-   │ ○ 서연 PC      ▶ │   │ ☐ 서연 PC     [보기▾]│   │                      │   │ ☑ 계란 ▏준호         │
-   │──────────────────│   │                      │   │   [거절]   [수락]    │   │                      │
-   │ 확인 코드 482 913│   │ 같은 Wi-Fi에서 만나면 │   └──────────────────────┘   └──────────────────────┘
-   │ 상대 화면과 같나요?│   │ 전달됩니다  [공유]   │                               ● 연결 = 지금 실시간
-   │  [아니요]  [예]  │   └──────────────────────┘                               ○ 떨어져 있음 = 만나면 병합
+   │ Urinote nearby   │   │ Share 'Groceries'    │   │ Minji PC shared      │   │ Groceries  👥 2  ● on │
+   │ ○ Junho laptop ▶ │   │ ☑ Junho laptop [Edit▾]│   │ 'Groceries' with you │   │ ☐ Milk               │
+   │ ○ Seoyeon PC   ▶ │   │ ☐ Seoyeon PC  [View▾]│   │                      │   │ ☑ Eggs ▏Junho        │
+   │──────────────────│   │                      │   │  [Decline] [Accept]  │   │                      │
+   │ Code 482 913     │   │ Delivered when you   │   └──────────────────────┘   └──────────────────────┘
+   │ Same as theirs?  │   │ meet on Wi-Fi [Share]│                               ● on = live now
+   │   [No]   [Yes]   │   └──────────────────────┘                               ○ away = merges when you meet
    └──────────────────┘
    ```
-   - 메모 목록과 스티키 상단에 공유 메모 표시(👥 인원), 연결 상태(● 실시간 / ○ 만나면 병합)를 보여 준다
+   - The note list and sticky header show shared notes (👥 member count) and connection status (● live / ○ merges when you meet)
 
 ---
 
-## 6. 품질 보증
+## 6. Quality assurance
 
-| 레벨 | 대상 | 도구 |
+| Level | Scope | Tools |
 |---|---|---|
-| 단위 | 도메인 서비스, Yjs 병합·압축, 기존 메모 변환, 암호화 | Vitest |
-| 컴포넌트 | 편집기, 목록, 색상 선택 | Testing Library |
-| 통합 | LocalRepo ↔ SyncEngine ↔ Supabase(로컬 `supabase start`) | Vitest + Docker |
-| E2E | 메모 CRUD, 스티키 창 열기/복원, 오프라인→온라인 | Playwright, WebDriver(tauri-driver) |
-| 수동 | 멀티 모니터, 모바일 실기기, 알림 | 체크리스트 |
+| Unit | Domain services, Yjs merge/compaction, migration of old notes, sharing engine, cursors, reminders, backup, i18n coverage | Vitest, `cargo test` |
+| Component | Editor, list, color picker | Testing Library |
+| Integration | LocalRepo ↔ SyncEngine ↔ Supabase (local `supabase start`) | Vitest + Docker |
+| E2E | Note CRUD, opening/restoring sticky windows, offline → online | Playwright, WebDriver (tauri-driver) |
+| Manual | Multiple monitors, real mobile devices, notifications, each desktop OS | checklist |
 
-**동기화 핵심 테스트 시나리오**
-- 두 기기가 오프라인에서 같은 메모의 다른 줄·같은 줄을 편집 → 온라인 복귀 → 두 편집이 모두 남고 양쪽 결과가 같음
-- 같은 PC의 Hub와 스티키에서 같은 메모 동시 입력 → 두 창 내용 일치, 재시작 후에도 유지
-- A 삭제 / B 편집 동시 발생 → 편집 쪽 보존(복원) 확인
-- 업데이트 중복·순서 뒤바뀜 수신 → 결과 동일 (멱등성)
-- 1,000개 메모 최초 동기화 → 30초 이내 완료
+**Core sync test scenarios**
+- Two offline devices edit different lines and the same line of a note → back online → both edits remain and both sides end up identical
+- Typing in the same note in the hub and a sticky window on one PC → both windows match, and it persists after restart
+- A deletes while B edits → the edit is kept (restored)
+- Duplicate or reordered updates → same result (idempotency)
+- First sync of 1,000 notes → done within 30 s
 
-**공유 테스트 시나리오 (v1.1, 같은 Wi-Fi의 PC 2~3대)**
-- 친구 등록: 두 화면의 6자리 코드 일치 → 등록. 한쪽이 [취소]하면 등록 안 됨
-- 공유 제안 → 수락 → 3초 이내 상대 기기에 메모 표시, 이후 편집 300ms 이내 반영, 커서 표시
-- Wi-Fi를 끊고 양쪽에서 편집 → 다시 연결 → 두 편집 모두 반영, 양쪽 결과 동일
-- A·B 동기화 → B·C 동기화 (A 없음) → C에 A의 편집 도착 (멤버 경유 전달)
-- 보기 전용 기기가 조작된 `update`를 보냄 → 모든 기기가 거부, 문서 변화 없음
-- 위조 멤버 목록(서명 불일치·낮은 버전) → 거부
-- 내보낸 기기 → 새 목록을 받은 기기들과 더 이상 동기화되지 않음
-- 소유자가 공유 종료 → 다른 멤버에게 "개인 사본으로 보관 / 삭제" 표시
-- 친구가 아닌 기기의 연결 시도 → 친구 추가 모드가 아니면 거부
-- 패킷 캡처로 메모 내용이 평문으로 보이지 않음 확인
+**Sharing test scenarios (v1.1, 2–3 PCs on the same Wi-Fi)**
+- Add a friend: the 6-digit codes match on both screens → added. If either side presses [Cancel], nothing is added
+- Share offer → accept → the note appears on the other device within 3 s; later edits arrive within 300 ms; cursor shown
+- Disconnect Wi-Fi and edit on both sides → reconnect → both edits applied and both sides identical
+- A·B sync → B·C sync (A absent) → A's edits reach C (relayed by a member)
+- A view-only device sends a tampered `update` → every device rejects it; the document is unchanged
+- Forged member list (bad signature or lower version) → rejected
+- Removed device → no longer synced with devices that received the new list
+- Owner ends sharing → other members see a notice and keep a personal copy
+- A non-friend device tries to connect → rejected unless in Add-a-friend mode
+- Packet capture shows no plaintext note contents
 
 ---
 
-## 7. 개발 계획
+## 7. Development plan
 
-### 7.1 일정 (1인 개발 기준, v1.0 약 13주 + 친구 공유(S1~S4) 약 3.5주)
+### 7.1 Schedule (one developer; v1.0 about 13 weeks + friend sharing (S1–S4) about 3.5 weeks)
 
-| 단계 | 기간 | 주요 작업 | 완료 기준 (DoD) |
+| Stage | Time | Main work | Definition of done |
 |---|---|---|---|
-| **M0. 환경 구성** ✅ | 1주차 | Rust/Tauri 2 설치, React+TS+Vite, ESLint/Prettier, Git, CI | 데스크톱 빈 앱 실행 (Android 검증은 M4로 이동) |
-| **M1. 로컬 메모** ✅ | 2~3주차 | SQLite 마이그레이션, LocalRepo, NoteService, Hub 목록, TipTap 편집기, 자동 저장, 색상, 핀, FTS 검색, 휴지통 | 오프라인 CRUD·검색 동작, 단위 테스트 통과 |
-| **M2. 스티키 창** ✅ | 4~5주차 | 멀티 윈도우, 창 상태 저장/복원, 항상 위·투명도·접기, 트레이, 전역 단축키, 자동 실행, 창 간 이벤트 동기화 | 재부팅 후 스티키 창 원위치 복원 |
-| **M3a. Yjs 전환 (로컬)** ✅ | 6주차 | `0002_yjs.sql`, 문서 저장소(스냅샷 + 업데이트 로그), TipTap Collaboration 바인딩, 창 간 `doc:update` 실시간 병합, 기존 메모 변환, 로컬 압축 | Hub·스티키 동시 편집 병합, 기존 메모 무손실 변환 |
-| **M3b. 계정·동기화** ⏸ 보류 | (서버 결정 후) | Supabase 스키마·RLS, Auth(이메일/Google, 딥링크), SyncEngine(문서 업데이트 Push/Pull/Realtime, 메타 LWW), 서버 스냅샷 압축, 상태 표시 | 두 PC 오프라인 동시 편집 후 자동 병합, 3초 내 반영 |
-| **M4. 모바일** | 10~11주차 | Android 빌드, 모바일 레이아웃, 편집기 터치 최적화, 공유 받기, 보안 저장소 | 폰↔PC 동기화 실기기 검증 |
-| **M5. 알림·폴더·설정** ✅ (M5a 폴더·설정 / M5b 알림 / M5c 내보내기·i18n) | 12주차 | 알림 예약/놓친 알림, 폴더 관리, 테마/글꼴, JSON 내보내기·가져오기, i18n | 알림 정시 표시, 설정 유지 |
-| **M6. 안정화·출시** | 13주차 | E2E, 성능 점검, 아이콘/브랜딩, 코드 서명, 자동 업데이트, MSI/DMG/APK, 스토어 등록 자료 | v1.0 릴리스 후보 |
-| **S1. P2P 전송 (Rust)** ✅ (PC 2대 실측 남음) | 서버가 필요 없어 M4 전에도 진행 가능, 1주 | iroh Endpoint(릴레이 끔) + mDNS 발견, 기기 키(keyring), 연결 수락 정책, 메시지 프레임, 서명/검증 command, 방화벽 규칙 | 같은 Wi-Fi PC 2대가 서로 발견·연결, 메시지 왕복 |
-| **S2. 친구 등록** ✅ (PC 2대 실측 남음) | 0.5주 | 친구 추가 화면, 커밋-공개 6자리 코드, `contacts`(`0003_contacts.sql`), 연결 코드 수동 연결 | 테스트 시나리오 "친구 등록" 통과 |
-| **S3. 공유·동기화** ✅ (PC 2대 실측 남음) | 1.5주 | `0004_shares.sql`, ShareEngine(hello/membership/offer/sync/update), 서명된 멤버 목록, 권한 규칙, 휴지통·나가기·종료, 공유 UI(멤버·권한) | 4.9 공유 테스트 시나리오 통과 |
-| **S4. 커서·마무리** ✅ (PC 2대 실측 남음) | 0.5주 | awareness(커서·이름), 연결 상태 표시, 남용 방지 제한 | 실시간 커서 표시, 제한 동작 |
-| **v1.2~** | 이후 | 메모 잠금, iOS 출시, 폴더 공유, 개인 공간 종단간 암호화, 캘린더/D-Day, 이미지·화면 캡처 | – |
+| **M0. Environment** ✅ | week 1 | Rust/Tauri 2, React+TS+Vite, ESLint/Prettier, Git, CI | Empty desktop app runs (Android check moved to M4) |
+| **M1. Local notes** ✅ | weeks 2–3 | SQLite migrations, LocalRepo, NoteService, hub list, TipTap editor, auto-save, colors, pin, FTS search, trash | Offline CRUD and search work, unit tests pass |
+| **M2. Sticky windows** ✅ | weeks 4–5 | Multi-window, save/restore window state, always on top / opacity / collapse, tray, global shortcuts, autostart, cross-window events | Sticky windows return to their positions after reboot |
+| **M3a. Switch to Yjs (local)** ✅ | week 6 | `0002_yjs.sql`, document store (snapshot + update log), TipTap Collaboration binding, live cross-window merging via `doc:update`, migration of old notes, local compaction | Hub and sticky edits merge live; old notes migrated without loss |
+| **M3b. Accounts & sync** ⏸ on hold | (after the server decision) | Supabase schema/RLS, Auth (email/Google, deep link), SyncEngine (push/pull/realtime of doc updates, metadata LWW), server snapshot compaction, status display | Two PCs edit offline at the same time and merge; changes appear within 3 s |
+| **M4. Mobile** | weeks 10–11 | Android build, mobile layout, touch-friendly editor, receive shares, secure storage | Phone ↔ PC verified on real devices |
+| **M5. Reminders, folders, settings** ✅ (M5a folders & settings / M5b reminders / M5c export & i18n) | week 12 | Reminder scheduling / missed reminders, folders, theme / font size, JSON export/import, i18n | Reminders fire on time; settings persist |
+| **M6. Stabilization & release** (in progress: CSP, update backup, error log, temporary icon, release workflow for Windows/macOS/Ubuntu) | week 13 | E2E, performance, icon/branding, code signing, auto-update, MSI/DMG/DEB/APK, store materials | v1.0 release candidate |
+| **S1. P2P transport (Rust)** ✅ (2-PC field test pending) | no server needed, can precede M4; 1 week | iroh Endpoint (relays off) + mDNS discovery, device key (keyring), connection acceptance policy, message framing, sign/verify commands, firewall rule | Two PCs on the same Wi-Fi discover and connect to each other, messages round-trip |
+| **S2. Adding friends** ✅ (2-PC field test pending) | 0.5 week | Add-a-friend screen, commit-reveal 6-digit code, `contacts` (`0003_contacts.sql`), manual connection code | "Add a friend" test scenario passes |
+| **S3. Sharing & sync** ✅ (2-PC field test pending) | 1.5 weeks | `0004_shares.sql`, ShareEngine (hello/membership/offer/sync/update), signed member lists, permission rules, trash/leave/end, sharing UI (members, permissions) | Sharing test scenarios in 4.9 pass |
+| **S4. Cursors & polish** ✅ (2-PC field test pending) | 0.5 week | Awareness (cursors, names), connection status, abuse limits | Live cursors; limits enforced |
+| **v1.2+** | later | Note lock, iOS release, folder sharing, end-to-end encryption of the personal space, calendar/D-Day, images and screen capture | – |
 
-### 7.2 마일스톤 산출물
-- **M1 데모**: 단일 창 로컬 메모장
-- **M2 데모 (내부 알파)**: 바탕화면 스티키 메모 (로그인 없음) → 실사용 피드백 수집
-- **M3 데모 (베타)**: 여러 PC 동기화 (자동 병합)
+### 7.2 Milestone deliverables
+- **M1 demo**: single-window local notebook
+- **M2 demo (internal alpha)**: desktop sticky notes (no sign-in) → collect real-use feedback
+- **M3 demo (beta)**: sync across PCs (automatic merging)
 - **M6**: v1.0 (Windows, macOS, Ubuntu, Android)
-- **v1.1**: 같은 Wi-Fi의 친구와 공동 편집 (서버 없음)
+- **v1.1**: co-editing with friends on the same Wi-Fi (no server)
 
-### 7.3 브랜치·릴리스 전략
-- `main`(릴리스) / `develop` / `feature/*`, PR 리뷰 후 병합
-- 버전: SemVer, 태그 푸시 시 GitHub Actions가 플랫폼별 빌드·서명·릴리스 생성
-- 데스크톱 자동 업데이트: `tauri-plugin-updater` + GitHub Releases
+### 7.3 Branching and releases
+- `main` (release) / `develop` / `feature/*`, merged after PR review
+- Versioning: SemVer. Pushing a `v*` tag makes GitHub Actions build installers for each platform into a draft release (`.github/workflows/release.yml`)
+- Desktop auto-update: `tauri-plugin-updater` + GitHub Releases
 
 ---
 
-## 8. 리스크 관리
+## 8. Risks
 
-| 리스크 | 영향 | 대응 |
+| Risk | Impact | Response |
 |---|---|---|
-| Tauri 모바일 플러그인 성숙도 | 모바일 일정 지연 | M0에서 Android 빌드 선검증, 실패 시 Capacitor로 전환 (Plan B) |
-| 동기화 버그로 데이터 손실 | 신뢰도 치명 | CRDT 병합, 추가 전용 업데이트 로그, 툼스톤, 휴지통, 자동 로컬 백업(일 1회), 동기화 시나리오 테스트 우선 작성 |
-| Yjs 문서·업데이트 로그 비대화 | 저장 공간·로딩 속도 | 로컬(50건)·서버(200건) 기준 스냅샷 압축, 오래된 툼스톤 GC |
-| 기기 간 통신이 막힌 Wi-Fi (공공 Wi-Fi·회사 망) | 공유 동작 안 함 | QR 수동 연결로 발견 문제는 대체, 통신 자체 차단은 안내 문구로 설명 |
-| 친구와 같은 Wi-Fi에서 만날 일이 적음 | 변경이 늦게 전달 | 멤버 경유 전달, 서버 중계(A 방식)는 서버 결정 시 선택 기능으로 추가 가능하도록 전송 계층을 분리 |
-| iroh 버전 변경 잦음 | 업그레이드 비용 | 버전 고정, 전송 계층을 Rust 모듈 하나로 격리 (대안 libp2p) |
-| 소유자 기기 분실 | 멤버 목록 변경 불가 | 편집은 계속 가능, 소유권 넘기기는 v1.2 |
-| 공유 메모 회수 불가 | 사용자 오해 | 공유·내보내기 시 "이미 받은 사본은 회수할 수 없음" 명시 |
-| 투명/테두리 없는 창의 OS별 차이 | UI 깨짐 | Windows/macOS/Ubuntu 각각 수동 테스트, 투명 미지원 시 불투명 대체. OS별 차이는 README "OS별 차이" 표 (Wayland: 전역 단축키·창 위치 제한) |
-| 코드 서명 비용·절차 | 설치 경고 (SmartScreen) | Windows 서명 인증서 조기 확보, macOS 공증(Notarization) |
-| iOS 배포 요건 (Mac, 개발자 계정 $99/년) | iOS 지연 | v1.0은 Windows/macOS/Ubuntu/Android, iOS는 v1.2 |
-| Supabase 무료 요금제 한도 | 서비스 중단 | 사용량 모니터링, 유료 전환 기준 사전 정의 |
-| 영문권에서 "Uri-" 발음이 "urine"을 연상시킬 수 있음 | 해외 인지도 | 로고·표기를 **"Uri Note / 우리노트"**로 띄어 쓰는 방안 검토 |
+| Maturity of Tauri mobile plugins | Mobile schedule slips | Verify the Android build early; switch to Capacitor if it fails (Plan B) |
+| Data loss from sync bugs | Fatal to trust | CRDT merging, append-only update log, tombstones, trash, DB backup before migrations, sync scenario tests written first |
+| Growth of Yjs documents and update logs | Storage and load time | Snapshot compaction (local 50 / server 200 updates), GC of old tombstones |
+| Wi-Fi that blocks device-to-device traffic (public, corporate) | Sharing does not work | Manual connection codes/QR work around discovery; explain blocked traffic in the UI |
+| Friends rarely meet on the same Wi-Fi | Changes arrive late | Relaying via members; the transport layer is separated so a server relay can be added later as an option |
+| Frequent iroh version changes | Upgrade cost | Pin versions; isolate the transport in one Rust module (alternative: libp2p) |
+| Owner loses their device | Member list cannot change | Editing continues; ownership transfer in v1.2 |
+| Shared notes cannot be recalled | User misunderstanding | State "copies already received cannot be recalled" when sharing and removing |
+| Per-OS differences in transparent/frameless windows | Broken UI | Manual tests on Windows/macOS/Ubuntu; fall back to opaque if transparency is unsupported. Per-OS differences in the README (Wayland: global shortcuts and window positions limited) |
+| Cost and process of code signing | Install warnings (SmartScreen, Gatekeeper) | Get a Windows signing certificate early; macOS notarization |
+| iOS requirements (a Mac, $99/year developer account) | iOS delayed | v1.0 ships Windows/macOS/Ubuntu/Android; iOS in v1.2 |
+| Supabase free-tier limits | Service interruption | Monitor usage; define the paid-plan threshold in advance |
+| In English, "Uri-" may evoke "urine" | International perception | Consider writing the logo and name as **"Uri Note / 우리노트"** |
 
 ---
 
-## 9. 미결 사항
+## 9. Open questions
 
-| # | 항목 | 현재 가정 | 결정 필요 시점 |
+| # | Item | Current assumption | Decide by |
 |---|---|---|---|
-| 1 | 앱 셸 | ✅ Tauri 2 확정 (Plan B: Capacitor) | – |
-| 2 | 동기화 백엔드 | ⏸ 보류 (Supabase 건너뜀). 내 기기 간 동기화는 서버 결정 시 진행 | M3b 시작 전 |
-| 3 | 동기화 방식 | ✅ Yjs(CRDT) 확정 | – |
-| 4 | 공유 형태·전송 | ✅ 실시간 공동 편집 + **같은 Wi-Fi 전용 서버리스 P2P (B 방식)** 확정 | – |
-| 5 | iOS 출시 시점 | v1.2 | M4 시작 전 |
-| 6 | 로그인 없이 사용 허용 | ✅ 허용. 친구 공유도 로그인 없음 (기기 ID 기반) | – |
-| 7a | P2P 라이브러리 | iroh (대안 libp2p) — S1에서 Windows 방화벽·mDNS 동작을 먼저 검증 | S1 시작 시 |
-| 7b | 내 기기끼리 같은 Wi-Fi 동기화 | 같은 P2P 계층으로 "내 기기" 등록 시 전체 메모 동기화 가능 (서버 없는 M3b 대안) — 범위 결정 필요 | S3 이후 |
-| 7 | 상표·도메인 | `urinote` 상표(KIPRIS 제9류)·도메인·스토어 중복 확인 필요 | M6 전 |
-| 8 | 수익 모델 | 무료 (향후 프리미엄: 첨부 용량·잠금·공유 인원) | v1.1 |
+| 1 | App shell | ✅ Tauri 2 (Plan B: Capacitor) | – |
+| 2 | Sync backend | ⏸ on hold (Supabase skipped). Sync between my own devices proceeds once a server is chosen | before M3b |
+| 3 | Sync method | ✅ Yjs (CRDT) | – |
+| 4 | Sharing model and transport | ✅ real-time co-editing + **serverless P2P on the same Wi-Fi** | – |
+| 5 | iOS release timing | v1.2 | before M4 |
+| 6 | Use without signing in | ✅ allowed. Friend sharing also needs no sign-in (device-ID based) | – |
+| 7a | P2P library | iroh (alternative libp2p) — verify Windows firewall and mDNS behavior first in S1 | at S1 |
+| 7b | Syncing my own devices over the same Wi-Fi | The same P2P layer could sync all notes once a device is registered as "mine" (a serverless alternative to M3b) — scope to be decided | after S3 |
+| 7 | Trademark and domain | Check `urinote` trademark (class 9), domain and store availability | before M6 |
+| 8 | App ID | `com.urinote.app` — hard to change after release (determines data and key locations) | before the first release |
+| 9 | License | Repository is public; choose a license (e.g. MIT) and add third-party notices | before the first release |
+| 10 | Business model | Free (possible premium later: attachment storage, lock, more share members) | v1.1 |

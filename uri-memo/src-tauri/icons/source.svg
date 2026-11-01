@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <!-- Urinote 임시 아이콘 원본. 바꾸려면 이 파일(또는 1024px PNG)로 `npx tauri icon src-tauri/icons/source.svg` -->
+  <!-- Source of the temporary Urinote icon. To regenerate: `npx tauri icon src-tauri/icons/source.svg` (or a 1024px PNG) -->
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#ffd84d"/>

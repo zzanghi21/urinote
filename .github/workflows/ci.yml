@@ -34,7 +34,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      # Ubuntu: WebKitGTK(웹뷰), 트레이(AppIndicator), Secret Service(D-Bus) 개발 패키지
+      # Ubuntu: dev packages for WebKitGTK (webview), tray (AppIndicator) and Secret Service (D-Bus)
       - if: runner.os == 'Linux'
         working-directory: .
         run: |
