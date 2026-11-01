@@ -34,7 +34,18 @@ npm run typecheck      # TypeScript
 npm test               # frontend unit tests (incl. i18n coverage)
 npm run tauri build    # build installers
 cargo test --lib --manifest-path src-tauri/Cargo.toml   # Rust tests
+npm run licenses       # regenerate THIRD_PARTY_LICENSES.md
+npm run e2e:build      # build the app for end-to-end tests (app ID kr.urinote.e2e)
+npm run e2e            # end-to-end tests against the real app
 ```
+
+End-to-end tests drive the real app through WebDriver ([tauri-driver](https://v2.tauri.app/develop/tests/webdriver/)). They use their own app ID, so real notes are never touched, and delete the test data afterwards.
+
+- Install: `cargo install tauri-driver --locked`
+- **Windows**: also needs `msedgedriver.exe` matching the installed WebView2 version, at `~/.tauri/edgedriver/msedgedriver.exe` or in `EDGEDRIVER`
+- **Ubuntu**: `sudo apt install webkit2gtk-driver xvfb`; run headless with `xvfb-run -a npm run e2e`
+- **macOS**: not supported (no WebDriver for WKWebView)
+- CI runs them on Ubuntu.
 
 ## Data and log locations
 

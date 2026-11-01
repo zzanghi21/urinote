@@ -14,7 +14,9 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "licenses": "node scripts/third-party-licenses.mjs"
+    "licenses": "node scripts/third-party-licenses.mjs",
+    "e2e:build": "node scripts/e2e-build.mjs",
+    "e2e": "vitest run --config vitest.e2e.config.ts"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -54,6 +56,7 @@
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.1",
     "vite": "^8.0.16",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "webdriverio": "^9.32.0"
   }
 }

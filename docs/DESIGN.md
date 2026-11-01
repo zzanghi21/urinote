@@ -605,7 +605,7 @@ The member list has this format and is **signed with the owner's device key**:
 | Unit | Domain services, Yjs merge/compaction, migration of old notes, sharing engine, cursors, reminders, backup, i18n coverage | Vitest, `cargo test` |
 | Component | Editor, list, color picker | Testing Library |
 | Integration | LocalRepo ↔ SyncEngine ↔ Supabase (local `supabase start`) | Vitest + Docker |
-| E2E | Note CRUD, opening/restoring sticky windows, offline → online | Playwright, WebDriver (tauri-driver) |
+| E2E | Note persistence across restarts, search, trash/restore, folders, language switch, sticky window sync (`uri-memo/e2e`) | WebdriverIO + tauri-driver (Windows locally, Ubuntu in CI) |
 | Manual | Multiple monitors, real mobile devices, notifications, each desktop OS | checklist |
 
 **Core sync test scenarios**

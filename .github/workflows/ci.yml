@@ -58,3 +58,30 @@ jobs:
       - if: runner.os == 'Linux'
         run: npm run licenses && git diff --exit-code ../THIRD_PARTY_LICENSES.md
       - run: npm run tauri build -- --debug --no-bundle
+
+  # Drives the real app through WebDriver (tauri-driver). Linux only: macOS has no WebDriver for
+  # WKWebView, and Windows needs an msedgedriver matching the runner's WebView2.
+  e2e:
+    needs: frontend
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - working-directory: .
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+            librsvg2-dev libdbus-1-dev pkg-config patchelf webkit2gtk-driver xvfb dbus-x11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: uri-memo/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: uri-memo/src-tauri -> target-e2e
+      - run: cargo install tauri-driver --locked
+      - run: npm ci
+      - run: npm run e2e:build
+      # virtual display (xvfb) + session bus (single-instance, notifications)
+      - run: dbus-run-session -- xvfb-run -a npm run e2e
