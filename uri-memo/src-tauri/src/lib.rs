@@ -3,6 +3,8 @@ use tauri::Manager;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 #[cfg(desktop)]
+mod backup;
+#[cfg(desktop)]
 mod desktop;
 #[cfg(desktop)]
 mod p2p;
@@ -50,7 +52,7 @@ pub fn run() {
 
     // 친구 공유 (같은 Wi-Fi P2P), 메모 알림
     #[cfg(desktop)]
-    let builder = reminders::init(p2p::init(builder)).invoke_handler(tauri::generate_handler![
+    let builder = backup::init(reminders::init(p2p::init(builder))).invoke_handler(tauri::generate_handler![
         p2p::p2p_start,
         p2p::p2p_set_contacts,
         p2p::p2p_set_pairing,
@@ -64,6 +66,8 @@ pub fn run() {
         p2p::p2p_sign,
         p2p::p2p_verify,
         reminders::reminders_set,
+        backup::backup_save,
+        backup::backup_open,
     ]);
 
     builder
