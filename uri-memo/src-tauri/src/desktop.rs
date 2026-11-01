@@ -81,6 +81,9 @@ pub fn plugins(builder: Builder<Wry>) -> Builder<Wry> {
                 })
                 .build(),
         )
+        // 자동 업데이트 (Hub 창이 확인·설치) + 설치 후 다시 시작
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
 }
 
 pub fn setup(app: &mut App) -> tauri::Result<()> {

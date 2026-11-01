@@ -49,12 +49,16 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # signs the update files; the app verifies them with the public key in tauri.conf.json
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: uri-memo
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: Urinote ${{ github.ref_name }}
+          # Draft until reviewed. Publishing it makes latest.json live, so installed apps update.
           releaseDraft: true
-          prerelease: true
+          prerelease: false
           args: ${{ matrix.args }}
       # Also make installers downloadable from the Actions page for manual runs (no tag)
       - uses: actions/upload-artifact@v4

@@ -3,6 +3,7 @@ import { useT } from "../../i18n";
 import { appKey } from "../../platform/shortcuts";
 import { OfferBanner } from "../share/ShareDialog";
 import { MissedBanner } from "../reminders/MissedBanner";
+import { UpdateBanner } from "../updates/UpdateBanner";
 import { useSettings } from "../settings/settingsStore";
 import { useShare } from "../share/shareStore";
 import { FolderBar } from "./FolderBar";
@@ -85,6 +86,7 @@ export function Sidebar({ searchRef }: { searchRef: React.RefObject<HTMLInputEle
         aria-label={t("메모 검색")}
       />
 
+      <UpdateBanner />
       <MissedBanner />
       <OfferBanner />
 

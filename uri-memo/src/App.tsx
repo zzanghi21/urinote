@@ -6,6 +6,7 @@ import { EditorPane } from "./features/notes/EditorPane";
 import { useNotes } from "./features/notes/notesStore";
 import { Sidebar } from "./features/notes/Sidebar";
 import { useReminders } from "./features/reminders/remindersStore";
+import { useUpdate } from "./features/updates/updateStore";
 import { SettingsDialog } from "./features/settings/SettingsDialog";
 import { FriendsDialog } from "./features/share/FriendsDialog";
 import { ShareDialog } from "./features/share/ShareDialog";
@@ -59,6 +60,8 @@ function App() {
       "app://new-sticky",
       () => void useNotes.getState().createSticky(),
     );
+    // 새 버전 확인 (Hub 창에서만)
+    useUpdate.getState().init();
     // 문서 업데이트 로그 압축은 Hub 창 한 곳에서만 한다
     const compactTimer = window.setInterval(
       () => void useNotes.getState().service?.compactDocs(),

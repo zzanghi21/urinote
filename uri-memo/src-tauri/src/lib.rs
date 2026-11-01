@@ -5,6 +5,7 @@ use tauri_plugin_sql::{Migration, MigrationKind};
 #[cfg(desktop)]
 mod backup;
 mod db_backup;
+mod legacy;
 #[cfg(desktop)]
 mod desktop;
 #[cfg(desktop)]
@@ -100,7 +101,8 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
-            // 프런트엔드가 DB 를 열어 마이그레이션하기 전에
+            // 프런트엔드가 DB 를 열어 마이그레이션하기 전에: 옛 앱 ID 데이터 이전 → 버전 변경 시 백업
+            legacy::run(app);
             db_backup::run(app);
 
             #[cfg(desktop)]

@@ -157,6 +157,14 @@ export const en: Record<string, Translation> = {
     "This backup format cannot be read by this version of Urinote",
   "백업 파일이 손상되었습니다 ({where})": "The backup file is damaged ({where})",
 
+  // 업데이트
+  "새 버전 {version}이 있습니다": "Version {version} is available",
+  나중에: "Later",
+  "설치하고 다시 시작": "Install and restart",
+  "업데이트를 내려받는 중…": "Downloading the update…",
+  "업데이트를 내려받는 중… {percent}%": "Downloading the update… {percent}%",
+  "업데이트하지 못했습니다: {error}": "Could not update: {error}",
+
   // 트레이
   "모든 메모 보이기": "Show all notes",
   "모든 메모 숨기기": "Hide all notes",

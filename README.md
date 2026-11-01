@@ -40,9 +40,9 @@ cargo test --lib --manifest-path src-tauri/Cargo.toml   # Rust tests
 
 | | Windows | macOS | Ubuntu |
 |---|---|---|---|
-| Note DB (`urinote.db`) | `%APPDATA%\com.urinote.app` | `~/Library/Application Support/com.urinote.app` | `~/.config/com.urinote.app` |
+| Note DB (`urinote.db`) | `%APPDATA%\kr.urinote.app` | `~/Library/Application Support/kr.urinote.app` | `~/.config/kr.urinote.app` |
 | DB backup before updates | `backups\<previous version>-<time>` in the folder above (latest 5) | same | same |
-| Error log (`urinote.log`, 1 MB × 3) | `%LOCALAPPDATA%\com.urinote.app\logs` | `~/Library/Logs/com.urinote.app` | `~/.local/share/com.urinote.app/logs` |
+| Error log (`urinote.log`, 1 MB × 3) | `%LOCALAPPDATA%\kr.urinote.app\logs` | `~/Library/Logs/kr.urinote.app` | `~/.local/share/kr.urinote.app/logs` |
 
 - Restoring a backup: quit the app completely (tray → Quit), then copy the `urinote.db*` files from the backup folder into the folder above.
 - The log contains errors, warnings and context only — never note contents.
@@ -64,9 +64,23 @@ cargo test --lib --manifest-path src-tauri/Cargo.toml   # Rust tests
 - The app is not code-signed yet (M6). On macOS, the first launch shows an "unidentified developer" warning → in Finder, **right-click the app → Open**.
 - Pushing a `v*` tag makes GitHub Actions (`.github/workflows/release.yml`) build installers for all three OSes into a draft release. Running the workflow manually (workflow_dispatch) also makes them downloadable from the Actions page.
 
+## Releasing and auto-update
+
+1. Bump the version in `uri-memo/package.json`, `uri-memo/src-tauri/tauri.conf.json` and `uri-memo/src-tauri/Cargo.toml`.
+2. Commit, then tag and push: `git tag v0.1.0 && git push origin v0.1.0`.
+3. GitHub Actions builds signed installers and update files (`latest.json`) into a **draft** release.
+4. Review the draft and **publish** it. Installed apps check `releases/latest/download/latest.json` (15 s after start, then every 6 h) and offer "Install and restart".
+
+Update signing:
+- The app verifies updates with the public key in `tauri.conf.json` (`plugins.updater.pubkey`).
+- The private key and its password are GitHub Secrets (`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`). A local copy lives outside the repo in `~/.tauri/urinote-updater.key` (+ `.password`). **Back it up** — if it is lost, installed apps can no longer verify new updates and must be reinstalled manually.
+- Building installers locally (`npm run tauri build`) needs the same two values as environment variables; `tauri dev` and `--no-bundle` builds do not.
+
+App ID: `kr.urinote.app` (renamed from `com.urinote.app`). On first run the app copies notes, backups and the device key from the old ID, so friends stay paired. UI settings (theme, language, text size, default color) start from defaults.
+
 ## Testing friend sharing on one PC
 
-Running a second instance with a different app ID (`com.urinote.dev2`) gives it its own DB and device key, so it behaves like another device.
+Running a second instance with a different app ID (`kr.urinote.dev2`) gives it its own DB and device key, so it behaves like another device.
 
 ```powershell
 cd uri-memo
@@ -78,3 +92,7 @@ npx tauri dev --config src-tauri/tauri.dev2.conf.json   # device 2
 ```
 
 Open 👥 (Friends) in both windows and each appears under "Urinote nearby". If the Windows firewall prompt appears on first run, allow **Private networks**.
+
+## License
+
+[MIT](LICENSE) © 2026 zzanghi

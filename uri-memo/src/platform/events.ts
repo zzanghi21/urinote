@@ -27,6 +27,11 @@ export function onNoteChangedElsewhere(handler: (id: string) => void): () => voi
   });
 }
 
+/** 모든 창에 앱 이벤트를 보낸다 (예: 업데이트 설치 전 app://flush) */
+export async function emitAppEvent(event: AppEvent) {
+  if (inTauri) await emit(event);
+}
+
 export function onAppEvent(event: AppEvent, handler: () => void): () => void {
   return subscribe(event, handler);
 }

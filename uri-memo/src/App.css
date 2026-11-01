@@ -619,3 +619,20 @@ input:focus-visible {
 .note-card-folder {
   color: var(--text-muted);
 }
+
+/* ---------- 새 버전 알림 ---------- */
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 12px 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, #0090ff 14%, var(--surface));
+  font-size: 13px;
+}
+
+.update-text {
+  flex: 1;
+  min-width: 0;
+}

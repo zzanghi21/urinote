@@ -6,7 +6,7 @@
 | Document version | v0.3 — friend sharing redesigned as **serverless P2P on the same Wi-Fi** (v0.2: CRDT (Yjs) sync) |
 | Date | 2026-10-28 |
 | Target platforms | Windows 10/11, macOS, Ubuntu 22.04+ (desktop), Android, iOS |
-| App ID (draft) | `com.urinote.app` |
+| App ID | `kr.urinote.app` (renamed from `com.urinote.app`; data and device key migrate automatically on first run) |
 
 ---
 
@@ -696,6 +696,6 @@ The member list has this format and is **signed with the owner's device key**:
 | 7a | P2P library | iroh (alternative libp2p) — verify Windows firewall and mDNS behavior first in S1 | at S1 |
 | 7b | Syncing my own devices over the same Wi-Fi | The same P2P layer could sync all notes once a device is registered as "mine" (a serverless alternative to M3b) — scope to be decided | after S3 |
 | 7 | Trademark and domain | Check `urinote` trademark (class 9), domain and store availability | before M6 |
-| 8 | App ID | `com.urinote.app` — hard to change after release (determines data and key locations) | before the first release |
-| 9 | License | Repository is public; choose a license (e.g. MIT) and add third-party notices | before the first release |
+| 8 | App ID | ✅ `kr.urinote.app` | – |
+| 9 | License | ✅ MIT. Third-party license notices still to be added | before the first release |
 | 10 | Business model | Free (possible premium later: attachment storage, lock, more share members) | v1.1 |
