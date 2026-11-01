@@ -106,7 +106,7 @@ fn notify<R: Runtime>(app: &AppHandle<R>, reminder: &Reminder) {
         .body(&reminder.body)
         .show();
     if let Err(err) = shown {
-        eprintln!("reminder notification failed: {err}");
+        log::error!("reminder notification failed: {err}");
     }
     let _ = app.emit_to("main", EVENT_DUE, &reminder.note_id);
 }

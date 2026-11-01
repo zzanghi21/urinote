@@ -89,7 +89,7 @@ pub fn setup(app: &mut App) -> tauri::Result<()> {
     // 다른 프로그램이 이미 쓰는 단축키면 등록에 실패할 수 있다. 앱 실행은 계속한다.
     for shortcut in [shortcut_new(), shortcut_toggle()] {
         if let Err(err) = app.global_shortcut().register(shortcut) {
-            eprintln!("global shortcut {shortcut:?} not registered: {err}");
+            log::warn!("global shortcut {shortcut:?} not registered: {err}");
         }
     }
 
@@ -146,7 +146,7 @@ fn build_tray(app: &App) -> tauri::Result<()> {
                 let enable = !launcher.is_enabled().unwrap_or(false);
                 let result = if enable { launcher.enable() } else { launcher.disable() };
                 if let Err(err) = result {
-                    eprintln!("autostart toggle failed: {err}");
+                    log::warn!("autostart toggle failed: {err}");
                 }
                 let _ = autostart.set_checked(launcher.is_enabled().unwrap_or(false));
             }
@@ -183,7 +183,7 @@ pub(crate) fn tray_set_labels(menu: State<'_, TrayMenu>, labels: HashMap<String,
             _ => Ok(()),
         };
         if let Err(err) = result {
-            eprintln!("tray label {id} not set: {err}");
+            log::warn!("tray label {id} not set: {err}");
         }
     }
 }

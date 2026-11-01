@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Urinote 임시 아이콘 원본. 바꾸려면 이 파일(또는 1024px PNG)로 `npx tauri icon src-tauri/icons/source.svg` -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd84d"/>
+      <stop offset="1" stop-color="#f5b800"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#7a5200" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#bg)"/>
+  <g filter="url(#shadow)" transform="rotate(-6 512 512)">
+    <path d="M262 232 H762 V652 L622 792 H262 Z" fill="#fffdf4"/>
+    <path d="M762 652 L622 792 V692 Q622 652 662 652 Z" fill="#f0e3b4"/>
+  </g>
+  <g transform="rotate(-6 512 512)" stroke-linecap="round" fill="none">
+    <path d="M340 370 H684" stroke="#e0a800" stroke-width="40"/>
+    <path d="M340 470 H620" stroke="#e8c45a" stroke-width="40"/>
+    <path d="M352 590 L410 646 L522 540" stroke="#2bb673" stroke-width="44" stroke-linejoin="round"/>
+  </g>
+</svg>

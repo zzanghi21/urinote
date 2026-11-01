@@ -20,12 +20,14 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 # macos-private-api: 스티키 메모 창의 투명 배경 (macOS)
 tauri = { version = "2", features = ["tray-icon", "macos-private-api"] }
-tauri-plugin-opener = "2"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["sync", "macros", "rt", "time", "fs"] }
 anyhow = "1"
+log = "0.4"
+# 오류 기록 (앱 로그 폴더, 메모 내용은 남기지 않음)
+tauri-plugin-log = "2"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"

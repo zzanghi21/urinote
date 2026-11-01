@@ -20,6 +20,18 @@
   ```
 - Android: Android Studio, SDK, NDK, JDK 17 (`npm run tauri android init`)
 
+## 데이터·로그 위치
+
+| | Windows | macOS | Ubuntu |
+|---|---|---|---|
+| 메모 DB (`urinote.db`) | `%APPDATA%\com.urinote.app` | `~/Library/Application Support/com.urinote.app` | `~/.config/com.urinote.app` |
+| 업데이트 전 DB 백업 | 위 폴더의 `backups\<이전 버전>-<시각>` (최근 5개) | 〃 | 〃 |
+| 오류 로그 (`urinote.log`, 1MB × 3) | `%LOCALAPPDATA%\com.urinote.app\logs` | `~/Library/Logs/com.urinote.app` | `~/.local/share/com.urinote.app/logs` |
+
+- 백업에서 되돌리기: 앱을 완전히 종료(트레이 → 종료)한 뒤 백업 폴더의 `urinote.db*` 파일을 위 폴더로 복사한다.
+- 로그에는 오류·경고와 상황만 남고 메모 본문은 남지 않는다.
+- 아이콘 바꾸기: 1024px PNG 또는 SVG 로 `npx tauri icon <파일>` (원본: `src-tauri/icons/source.svg`)
+
 ## OS별 차이
 
 | | Windows | macOS | Ubuntu |

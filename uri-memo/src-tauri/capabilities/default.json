@@ -20,7 +20,7 @@
     "core:window:allow-start-resize-dragging",
     "core:window:allow-available-monitors",
     "core:window:allow-cursor-position",
-    "opener:default",
+    "log:default",
     "sql:default",
     "sql:allow-execute"
   ]

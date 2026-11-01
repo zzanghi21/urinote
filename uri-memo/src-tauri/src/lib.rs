@@ -4,6 +4,7 @@ use tauri_plugin_sql::{Migration, MigrationKind};
 
 #[cfg(desktop)]
 mod backup;
+mod db_backup;
 #[cfg(desktop)]
 mod desktop;
 #[cfg(desktop)]
@@ -42,6 +43,25 @@ fn migrations() -> Vec<Migration> {
     ]
 }
 
+/// 오류 기록: 앱 로그 폴더의 urinote.log (최대 1MB × 3개). 우리 코드와 화면(webview)은 정보 이상,
+/// 라이브러리는 경고 이상만 남긴다. 메모 내용은 기록하지 않는다.
+fn log_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
+    use tauri_plugin_log::{RotationStrategy, Target, TargetKind, TimezoneStrategy};
+    tauri_plugin_log::Builder::new()
+        .clear_targets()
+        .timezone_strategy(TimezoneStrategy::UseLocal)
+        .targets([
+            Target::new(TargetKind::Stdout),
+            Target::new(TargetKind::LogDir { file_name: Some("urinote".into()) }),
+        ])
+        .level(log::LevelFilter::Warn)
+        .level_for("urinote_lib", log::LevelFilter::Info)
+        .level_for("webview", log::LevelFilter::Info)
+        .max_file_size(1_000_000)
+        .rotation_strategy(RotationStrategy::KeepSome(3))
+        .build()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -49,6 +69,8 @@ pub fn run() {
     // 단일 인스턴스 플러그인은 가장 먼저 등록해야 한다
     #[cfg(desktop)]
     let builder = desktop::plugins(builder);
+
+    let builder = builder.plugin(log_plugin());
 
     // 친구 공유 (같은 Wi-Fi P2P), 메모 알림
     #[cfg(desktop)]
@@ -72,13 +94,15 @@ pub fn run() {
     ]);
 
     builder
-        .plugin(tauri_plugin_opener::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations(DB_URL, migrations())
                 .build(),
         )
         .setup(|app| {
+            // 프런트엔드가 DB 를 열어 마이그레이션하기 전에
+            db_backup::run(app);
+
             #[cfg(desktop)]
             desktop::setup(app)?;
             #[cfg(desktop)]

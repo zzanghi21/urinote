@@ -72,7 +72,7 @@ fn device_key(service: &str, fallback: &Path) -> Result<SecretKey> {
     match keyring_key(service) {
         Ok(key) => Ok(key),
         Err(e) => {
-            eprintln!("OS 보안 저장소를 쓸 수 없어 기기 키를 파일에 둡니다: {e:#}");
+            log::warn!("OS 보안 저장소를 쓸 수 없어 기기 키를 파일에 둡니다: {e:#}");
             let key = SecretKey::generate();
             write_key_file(fallback, &key)?;
             Ok(key)

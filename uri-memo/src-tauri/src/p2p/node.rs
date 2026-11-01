@@ -238,7 +238,7 @@ async fn discovery_loop(mdns: MdnsAddressLookup, endpoint: Endpoint, shared: Arc
                     let (endpoint, shared) = (endpoint.clone(), shared.clone());
                     tokio::spawn(async move {
                         if let Err(err) = connect(&endpoint, &shared, id.into()).await {
-                            eprintln!("p2p auto-connect {} failed: {err:#}", id.fmt_short());
+                            log::info!("p2p auto-connect {} failed: {err:#}", id.fmt_short());
                         }
                     });
                 }
@@ -268,7 +268,7 @@ async fn accept_loop(endpoint: Endpoint, shared: Arc<Shared>) {
             }
             .await;
             if let Err(err) = result {
-                eprintln!("p2p incoming: {err:#}");
+                log::info!("p2p incoming: {err:#}");
             }
         });
     }
@@ -317,7 +317,7 @@ async fn register(
     tokio::spawn(write_loop(send, rx));
     tokio::spawn(async move {
         if let Err(err) = read_loop(&shared, id, recv).await {
-            eprintln!("p2p {}: {err:#}", id.fmt_short());
+            log::info!("p2p {}: {err:#}", id.fmt_short());
         }
         conn.close(0u32.into(), b"closed");
         let mut peers = shared.peers.lock().await;
