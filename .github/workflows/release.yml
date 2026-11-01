@@ -1,0 +1,66 @@
+# 설치 파일 만들기: v* 태그를 올리면 Windows / macOS / Ubuntu 설치 파일을 만들어
+# GitHub Release 초안에 올린다. 아직 코드 서명은 하지 않는다 (M6).
+#   git tag v0.1.0 && git push origin v0.1.0
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            args: ""
+          - os: macos-latest # Apple Silicon
+            args: --target aarch64-apple-darwin
+          - os: macos-latest # Intel Mac
+            args: --target x86_64-apple-darwin
+          - os: ubuntu-22.04 # .deb / .AppImage / .rpm
+            args: ""
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+            librsvg2-dev libdbus-1-dev pkg-config patchelf
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: uri-memo/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: uri-memo/src-tauri
+      - run: npm ci
+        working-directory: uri-memo
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: uri-memo
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          releaseName: Urinote ${{ github.ref_name }}
+          releaseDraft: true
+          prerelease: true
+          args: ${{ matrix.args }}
+      # 수동 실행(태그 없음)일 때도 Actions 화면에서 설치 파일을 받을 수 있게
+      - uses: actions/upload-artifact@v4
+        with:
+          name: urinote-${{ runner.os }}-${{ strategy.job-index }}
+          path: |
+            uri-memo/src-tauri/target/release/bundle/
+            uri-memo/src-tauri/target/*/release/bundle/
+          if-no-files-found: ignore

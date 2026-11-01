@@ -11,6 +11,7 @@ import type { Note } from "../../domain/note";
 import { NoteService, type NoteEdit } from "../../domain/noteService";
 import { formatReminder } from "../../domain/reminder";
 import { useT } from "../../i18n";
+import { appKey } from "../../platform/shortcuts";
 import { ReminderFields } from "../reminders/ReminderPicker";
 import { emitNoteChanged, onNoteChangedElsewhere } from "../../platform/events";
 import { openSticky, showHub, STICKY_COLLAPSED_HEIGHT } from "../../platform/stickyWindows";
@@ -192,7 +193,7 @@ export function StickyApp({ noteId }: { noteId: string }) {
           type="button"
           className="sticky-btn"
           onClick={newSticky}
-          title={t("새 메모 (Ctrl+N)")}
+          title={t("새 메모 ({key})", { key: appKey("N") })}
         >
           +
         </button>
@@ -266,7 +267,8 @@ export function StickyApp({ noteId }: { noteId: string }) {
             className="sticky-resize"
             onMouseDown={(e) => {
               e.preventDefault();
-              void appWindow.startResizeDragging("SouthEast");
+              // 창 가장자리로 크기를 바꾸는 플랫폼(macOS 등)에서는 지원하지 않아 실패할 수 있다
+              appWindow.startResizeDragging("SouthEast").catch(() => {});
             }}
             aria-hidden
           />

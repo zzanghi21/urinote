@@ -1,13 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 import { t } from "../i18n";
-import { isDesktopApp } from "./env";
+import { isDesktopApp, isLinux } from "./env";
+import { globalKey } from "./shortcuts";
 
 /** 트레이 메뉴 문구를 지금 언어로 바꾼다 (src-tauri/src/desktop.rs 의 메뉴 ID) */
 export async function updateTrayLabels() {
   if (!isDesktopApp) return;
   await invoke("tray_set_labels", {
     labels: {
-      new: t("새 메모") + "\tCtrl+Alt+N",
+      // Linux 트레이(AppIndicator)는 단축키 표시를 지원하지 않는다
+      new: isLinux ? t("새 메모") : t("새 메모") + "\t" + globalKey("N"),
       show_all: t("모든 메모 보이기"),
       hide_all: t("모든 메모 숨기기"),
       hub: t("메모 목록 열기"),

@@ -8,6 +8,7 @@ import type * as Y from "yjs";
 import { baseExtensions, DOC_FIELD } from "../../domain/editorSchema";
 import type { NoteEdit } from "../../domain/noteService";
 import { useT } from "../../i18n";
+import { appKey } from "../../platform/shortcuts";
 import { onAppEvent } from "../../platform/events";
 import { acquireDoc, flushAllDocs } from "./docSession";
 import { registerEditorFlush } from "./editorFlush";
@@ -183,17 +184,22 @@ function Toolbar({ editor }: { editor: Editor }) {
 
   const chain = () => editor.chain().focus();
   const buttons = [
-    { key: "bold", label: "B", title: t("굵게 (Ctrl+B)"), run: () => chain().toggleBold().run() },
+    {
+      key: "bold",
+      label: "B",
+      title: t("굵게 ({key})", { key: appKey("B") }),
+      run: () => chain().toggleBold().run(),
+    },
     {
       key: "italic",
       label: "I",
-      title: t("기울임 (Ctrl+I)"),
+      title: t("기울임 ({key})", { key: appKey("I") }),
       run: () => chain().toggleItalic().run(),
     },
     {
       key: "underline",
       label: "U",
-      title: t("밑줄 (Ctrl+U)"),
+      title: t("밑줄 ({key})", { key: appKey("U") }),
       run: () => chain().toggleUnderline().run(),
     },
     { key: "strike", label: "S", title: t("취소선"), run: () => chain().toggleStrike().run() },

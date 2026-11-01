@@ -3,13 +3,13 @@
 
 mod node;
 
-use std::str::FromStr;
+use std::{path::Path, str::FromStr};
 
 use anyhow::{anyhow, Context, Result};
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use iroh::{EndpointAddr, EndpointId, SecretKey};
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Runtime, State};
+use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 use tokio::sync::{mpsc, OnceCell};
 
 use node::{Node, NodeEvent, NodeOptions};
@@ -17,6 +17,8 @@ use node::{Node, NodeEvent, NodeOptions};
 /// 보안 저장소 항목 이름. 서비스 이름은 앱 identifier 를 써서, 테스트용 두 번째 인스턴스
 /// (tauri.dev2.conf.json) 가 다른 기기 키를 갖게 한다.
 const KEYRING_USER: &str = "p2p-device-key";
+/// 보안 저장소를 쓸 수 없을 때 기기 키를 두는 파일 (앱 로컬 데이터 폴더)
+const KEY_FILE: &str = "p2p-device-key";
 
 /// Hub 창의 ShareEngine 이 받는 이벤트
 const EVENT_DISCOVERED: &str = "p2p://discovered";
@@ -58,23 +60,68 @@ fn node<'a>(state: &'a State<'_, P2pState>) -> Result<&'a Node> {
     state.node.get().context("P2P 가 시작되지 않았습니다")
 }
 
-/// 기기 비밀키를 OS 보안 저장소(Windows 자격 증명 관리자 / macOS 키체인)에서 읽거나 처음이면 만든다.
-fn device_key(service: &str) -> Result<SecretKey> {
+/// 기기 비밀키를 읽거나 처음이면 만든다.
+///
+/// OS 보안 저장소(Windows 자격 증명 관리자 / macOS 키체인 / Linux Secret Service)에 둔다.
+/// 보안 저장소가 없는 환경(키링 데몬이 없는 Linux 등)에서는 앱 데이터 폴더의 파일에 두고
+/// (Unix 에서는 나만 읽을 수 있게 0600), 그 뒤로는 계속 그 파일을 쓴다.
+fn device_key(service: &str, fallback: &Path) -> Result<SecretKey> {
+    if fallback.exists() {
+        return read_key_file(fallback);
+    }
+    match keyring_key(service) {
+        Ok(key) => Ok(key),
+        Err(e) => {
+            eprintln!("OS 보안 저장소를 쓸 수 없어 기기 키를 파일에 둡니다: {e:#}");
+            let key = SecretKey::generate();
+            write_key_file(fallback, &key)?;
+            Ok(key)
+        }
+    }
+}
+
+fn keyring_key(service: &str) -> Result<SecretKey> {
     let entry = keyring::Entry::new(service, KEYRING_USER)?;
     match entry.get_password() {
-        Ok(hex) => {
-            let bytes: [u8; 32] = decode_hex(&hex)
-                .and_then(|b| b.try_into().ok())
-                .context("저장된 기기 키가 손상되었습니다")?;
-            Ok(SecretKey::from_bytes(&bytes))
-        }
+        Ok(hex) => parse_key(&hex),
         Err(keyring::Error::NoEntry) => {
             let key = SecretKey::generate();
             entry.set_password(&encode_hex(&key.to_bytes()))?;
+            // 저장소가 받아 주기만 하고 실제로는 저장하지 않는 경우를 걸러낸다
+            let stored = entry.get_password().context("저장한 기기 키를 다시 읽지 못했습니다")?;
+            anyhow::ensure!(stored == encode_hex(&key.to_bytes()), "기기 키가 저장되지 않았습니다");
             Ok(key)
         }
         Err(e) => Err(e).context("OS 보안 저장소에 접근하지 못했습니다"),
     }
+}
+
+fn parse_key(hex: &str) -> Result<SecretKey> {
+    let bytes: [u8; 32] = decode_hex(hex.trim())
+        .and_then(|b| b.try_into().ok())
+        .context("저장된 기기 키가 손상되었습니다")?;
+    Ok(SecretKey::from_bytes(&bytes))
+}
+
+fn read_key_file(path: &Path) -> Result<SecretKey> {
+    parse_key(&std::fs::read_to_string(path).context("기기 키 파일을 읽지 못했습니다")?)
+}
+
+fn write_key_file(path: &Path, key: &SecretKey) -> Result<()> {
+    use std::io::Write;
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = options.open(path).context("기기 키 파일을 만들지 못했습니다")?;
+    file.write_all(encode_hex(&key.to_bytes()).as_bytes())?;
+    Ok(())
 }
 
 fn encode_hex(bytes: &[u8]) -> String {
@@ -132,7 +179,11 @@ pub(crate) async fn p2p_start<R: Runtime>(
         .get_or_try_init(|| async {
             let (tx, rx) = mpsc::unbounded_channel();
             let service = app.config().identifier.clone();
-            let node = Node::start(device_key(&service)?, NodeOptions::default(), tx).await?;
+            let fallback = app.path().app_local_data_dir()?.join(KEY_FILE);
+            // 보안 저장소 호출은 막힐 수 있으므로 (Linux D-Bus 등) 비동기 작업 밖에서 한다
+            let key = tauri::async_runtime::spawn_blocking(move || device_key(&service, &fallback))
+                .await??;
+            let node = Node::start(key, NodeOptions::default(), tx).await?;
             forward_events(app.clone(), rx);
             anyhow::Ok(node)
         })
@@ -173,12 +224,49 @@ pub(crate) async fn p2p_connect_addr(state: State<'_, P2pState>, addr: String) -
     Ok(id.to_string())
 }
 
-/// 기기 표시 이름 기본값 (PC 이름)
+/// 기기 표시 이름 기본값 (PC 이름). macOS 의 "MacBook-Pro.local" 은 ".local" 을 뗀다
 #[tauri::command]
 pub(crate) fn p2p_default_name() -> String {
-    std::env::var("COMPUTERNAME")
-        .or_else(|_| std::env::var("HOSTNAME"))
-        .unwrap_or_else(|_| "Urinote".to_string())
+    device_name(&gethostname::gethostname().to_string_lossy())
+}
+
+fn device_name(host: &str) -> String {
+    let name = host.trim().trim_end_matches(".local").trim_end_matches(".lan");
+    if name.is_empty() { "Urinote".to_string() } else { name.chars().take(64).collect() }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn device_name_from_host() {
+        assert_eq!(device_name("MacBook-Pro.local"), "MacBook-Pro");
+        assert_eq!(device_name("DESKTOP-1234"), "DESKTOP-1234");
+        assert_eq!(device_name(""), "Urinote");
+    }
+
+    #[test]
+    fn falls_back_to_a_private_key_file_and_keeps_using_it() {
+        let dir = std::env::temp_dir().join(format!("urinote-key-test-{}", std::process::id()));
+        let path = dir.join(KEY_FILE);
+        let _ = std::fs::remove_dir_all(&dir);
+
+        let key = SecretKey::generate();
+        write_key_file(&path, &key).unwrap();
+        // 파일이 있으면 보안 저장소를 보지 않고 파일의 키를 쓴다
+        assert_eq!(device_key("unused", &path).unwrap().to_bytes(), key.to_bytes());
+        // 이미 있는 파일을 덮어쓰지 않는다
+        assert!(write_key_file(&path, &SecretKey::generate()).is_err());
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(&path).unwrap().permissions().mode();
+            assert_eq!(mode & 0o777, 0o600);
+        }
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 }
 
 /// QR 로 보여 줄 내 연결 정보 (JSON)

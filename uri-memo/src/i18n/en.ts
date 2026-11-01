@@ -35,8 +35,8 @@ export const en: Record<string, Translation> = {
 
   // 목록·사이드바
   "새 메모": "New note",
-  "새 메모 (Ctrl+N)": "New note (Ctrl+N)",
-  "메모 검색 (Ctrl+F)": "Search notes (Ctrl+F)",
+  "새 메모 ({key})": "New note ({key})",
+  "메모 검색 ({key})": "Search notes ({key})",
   "메모 검색": "Search notes",
   보기: "View",
   전체: "All",
@@ -86,9 +86,9 @@ export const en: Record<string, Translation> = {
   "휴지통으로 이동": "Move to trash",
   "휴지통으로 이동 (나에게서만 숨김)": "Move to trash (hidden only for me)",
   "바탕화면에 붙이기": "Pin to desktop",
-  "굵게 (Ctrl+B)": "Bold (Ctrl+B)",
-  "기울임 (Ctrl+I)": "Italic (Ctrl+I)",
-  "밑줄 (Ctrl+U)": "Underline (Ctrl+U)",
+  "굵게 ({key})": "Bold ({key})",
+  "기울임 ({key})": "Italic ({key})",
+  "밑줄 ({key})": "Underline ({key})",
   취소선: "Strikethrough",
   "글머리 기호": "Bulleted list",
   체크리스트: "Checklist",

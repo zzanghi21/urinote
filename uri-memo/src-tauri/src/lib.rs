@@ -100,6 +100,10 @@ pub fn run() {
                 }
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app, _event| {
+            #[cfg(desktop)]
+            desktop::on_run_event(_app, &_event);
+        });
 }

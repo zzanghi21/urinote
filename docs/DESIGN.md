@@ -1,11 +1,11 @@
-﻿# Urinote(우리노트) 설계 및 개발 계획서
+# Urinote(우리노트) 설계 및 개발 계획서
 
 | 항목 | 내용 |
 |---|---|
 | 제품명 | **Urinote (우리노트)** |
 | 문서 버전 | v0.3 — 친구 공유를 **같은 Wi-Fi 전용 서버리스 P2P**로 재설계 (v0.2: CRDT(Yjs) 동기화) |
 | 작성일 | 2026-10-28 |
-| 대상 플랫폼 | Windows 10/11, macOS, Android, iOS |
+| 대상 플랫폼 | Windows 10/11, macOS, Ubuntu 22.04+ (데스크톱), Android, iOS |
 | 앱 ID (안) | `com.urinote.app` |
 
 ---
@@ -127,7 +127,7 @@ Urinote는 PC 바탕화면에 포스트잇처럼 붙여 두는 **스티키 메�
 | CRDT | **Yjs** (`y-prosemirror`, `y-protocols/awareness`) | 오프라인 편집·다기기·공동 편집 자동 병합, 증분 업데이트 전송 |
 | P2P 전송 | **iroh** (Rust, QUIC) — 릴레이 끔 + 로컬 네트워크 발견(mDNS) (v1.1) | 기기 ID = Ed25519 공개키로 상호 인증·암호화(TLS 1.3)가 내장. 데스크톱·Android·iOS 지원. 대안: `libp2p`(mdns + noise) |
 | 서명 | iroh 기기 키(Ed25519) | 공유 멤버 목록에 소유자가 서명 → 다른 멤버를 거쳐 전달돼도 위조 불가 |
-| 키 보관 | `keyring` crate (Windows 자격 증명 관리자 / macOS 키체인 / Android Keystore) | 기기 비밀키를 OS 보안 저장소에 보관 |
+| 키 보관 | `keyring` crate (Windows 자격 증명 관리자 / macOS 키체인 / Linux Secret Service, 없으면 0600 파일 / Android Keystore) | 기기 비밀키를 OS 보안 저장소에 보관 |
 | 상태 관리 | Zustand | 단순, 창 간 상태 분리에 적합 |
 | 로컬 DB | **SQLite** (`tauri-plugin-sql`) + FTS5 | 오프라인 저장, 전문 검색 |
 | 백엔드 | **Supabase** (Postgres, Auth, Realtime) | 서버 개발 없이 인증·DB·실시간 |
@@ -654,7 +654,7 @@ Idle ──변경/타이머──▶ Pushing ──▶ Pulling ──▶ Idle
 - **M1 데모**: 단일 창 로컬 메모장
 - **M2 데모 (내부 알파)**: 바탕화면 스티키 메모 (로그인 없음) → 실사용 피드백 수집
 - **M3 데모 (베타)**: 여러 PC 동기화 (자동 병합)
-- **M6**: v1.0 (Windows, macOS, Android)
+- **M6**: v1.0 (Windows, macOS, Ubuntu, Android)
 - **v1.1**: 같은 Wi-Fi의 친구와 공동 편집 (서버 없음)
 
 ### 7.3 브랜치·릴리스 전략
@@ -676,9 +676,9 @@ Idle ──변경/타이머──▶ Pushing ──▶ Pulling ──▶ Idle
 | iroh 버전 변경 잦음 | 업그레이드 비용 | 버전 고정, 전송 계층을 Rust 모듈 하나로 격리 (대안 libp2p) |
 | 소유자 기기 분실 | 멤버 목록 변경 불가 | 편집은 계속 가능, 소유권 넘기기는 v1.2 |
 | 공유 메모 회수 불가 | 사용자 오해 | 공유·내보내기 시 "이미 받은 사본은 회수할 수 없음" 명시 |
-| 투명/테두리 없는 창의 OS별 차이 | UI 깨짐 | Windows/macOS 각각 수동 테스트, 투명 미지원 시 불투명 대체 |
+| 투명/테두리 없는 창의 OS별 차이 | UI 깨짐 | Windows/macOS/Ubuntu 각각 수동 테스트, 투명 미지원 시 불투명 대체. OS별 차이는 README "OS별 차이" 표 (Wayland: 전역 단축키·창 위치 제한) |
 | 코드 서명 비용·절차 | 설치 경고 (SmartScreen) | Windows 서명 인증서 조기 확보, macOS 공증(Notarization) |
-| iOS 배포 요건 (Mac, 개발자 계정 $99/년) | iOS 지연 | v1.0은 Windows/macOS/Android, iOS는 v1.2 |
+| iOS 배포 요건 (Mac, 개발자 계정 $99/년) | iOS 지연 | v1.0은 Windows/macOS/Ubuntu/Android, iOS는 v1.2 |
 | Supabase 무료 요금제 한도 | 서비스 중단 | 사용량 모니터링, 유료 전환 기준 사전 정의 |
 | 영문권에서 "Uri-" 발음이 "urine"을 연상시킬 수 있음 | 해외 인지도 | 로고·표기를 **"Uri Note / 우리노트"**로 띄어 쓰는 방안 검토 |
 

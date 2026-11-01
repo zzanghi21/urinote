@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- macOS: Tauri 가 앱 Info.plist 에 합친다. 같은 Wi-Fi 친구 찾기(mDNS)에 로컬 네트워크 권한이 필요하다 -->
+<plist version="1.0">
+<dict>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>Urinote finds friends on the same Wi-Fi to share notes. 같은 Wi-Fi의 친구를 찾아 메모를 공유합니다.</string>
+  <key>NSBonjourServices</key>
+  <array>
+    <string>_urinote._udp</string>
+  </array>
+</dict>
+</plist>

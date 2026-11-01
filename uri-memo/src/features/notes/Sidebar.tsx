@@ -1,5 +1,6 @@
 import type { NoteView } from "../../domain/note";
 import { useT } from "../../i18n";
+import { appKey } from "../../platform/shortcuts";
 import { OfferBanner } from "../share/ShareDialog";
 import { MissedBanner } from "../reminders/MissedBanner";
 import { useSettings } from "../settings/settingsStore";
@@ -67,7 +68,7 @@ export function Sidebar({ searchRef }: { searchRef: React.RefObject<HTMLInputEle
           type="button"
           className="new-btn"
           onClick={() => create()}
-          title={t("새 메모 (Ctrl+N)")}
+          title={t("새 메모 ({key})", { key: appKey("N") })}
           aria-label={t("새 메모")}
         >
           +
@@ -78,7 +79,7 @@ export function Sidebar({ searchRef }: { searchRef: React.RefObject<HTMLInputEle
         ref={searchRef}
         className="search"
         type="search"
-        placeholder={t("메모 검색 (Ctrl+F)")}
+        placeholder={t("메모 검색 ({key})", { key: appKey("F") })}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         aria-label={t("메모 검색")}

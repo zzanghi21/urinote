@@ -1,11 +1,15 @@
 //! 데스크톱 전용: 트레이, 전역 단축키, 자동 실행, 단일 인스턴스
 
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::atomic::{AtomicBool, Ordering},
+    time::Duration,
+};
 
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem, MenuItemKind, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    App, AppHandle, Builder, Emitter, Manager, Runtime, State, Wry,
+    App, AppHandle, Builder, Emitter, Manager, RunEvent, Runtime, State, Wry,
 };
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_global_shortcut::{
@@ -20,12 +24,38 @@ const EVENT_NEW_STICKY: &str = "app://new-sticky";
 /// 종료 직전 모든 창이 저장 대기 중인 입력을 저장하도록 알린다
 const EVENT_FLUSH: &str = "app://flush";
 
+/// 전역 단축키 조합: macOS 는 ⌘⌥, 그 밖에는 Ctrl+Alt (프런트엔드 platform/shortcuts.ts 와 같아야 한다)
+fn global_mods() -> Modifiers {
+    if cfg!(target_os = "macos") {
+        Modifiers::SUPER | Modifiers::ALT
+    } else {
+        Modifiers::CONTROL | Modifiers::ALT
+    }
+}
+
 fn shortcut_new() -> Shortcut {
-    Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyN)
+    Shortcut::new(Some(global_mods()), Code::KeyN)
 }
 
 fn shortcut_toggle() -> Shortcut {
-    Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyH)
+    Shortcut::new(Some(global_mods()), Code::KeyH)
+}
+
+/// 저장 대기 중인 입력을 저장하라고 알린 뒤에만 실제로 종료한다
+static FLUSHED: AtomicBool = AtomicBool::new(false);
+
+/// 앱 전체 이벤트: 종료 요청(트레이 "종료", macOS ⌘Q, 로그아웃)은 입력을 저장한 뒤 종료하고,
+/// macOS 에서 Dock 아이콘을 누르면 Hub 창을 다시 띄운다
+pub fn on_run_event<R: Runtime>(app: &AppHandle<R>, event: &RunEvent) {
+    match event {
+        RunEvent::ExitRequested { api, .. } if !FLUSHED.load(Ordering::SeqCst) => {
+            api.prevent_exit();
+            quit_app(app);
+        }
+        #[cfg(target_os = "macos")]
+        RunEvent::Reopen { .. } => show_hub(app),
+        _ => {}
+    }
 }
 
 pub fn plugins(builder: Builder<Wry>) -> Builder<Wry> {
@@ -70,7 +100,8 @@ pub fn setup(app: &mut App) -> tauri::Result<()> {
 }
 
 fn build_tray(app: &App) -> tauri::Result<()> {
-    let new = MenuItem::with_id(app, "new", "새 메모\tCtrl+Alt+N", true, None::<&str>)?;
+    // 문구는 Hub 가 앱 언어·OS 에 맞게 tray_set_labels 로 바꾼다 (Linux 는 단축키 표시를 하지 않음)
+    let new = MenuItem::with_id(app, "new", "새 메모", true, None::<&str>)?;
     let show_all = MenuItem::with_id(app, "show_all", "모든 메모 보이기", true, None::<&str>)?;
     let hide_all = MenuItem::with_id(app, "hide_all", "모든 메모 숨기기", true, None::<&str>)?;
     let hub = MenuItem::with_id(app, "hub", "메모 목록 열기", true, None::<&str>)?;
@@ -192,6 +223,9 @@ fn toggle_stickies<R: Runtime>(app: &AppHandle<R>) {
 }
 
 fn quit_app<R: Runtime>(app: &AppHandle<R>) {
+    if FLUSHED.swap(true, Ordering::SeqCst) {
+        return;
+    }
     let _ = app.emit(EVENT_FLUSH, ());
     let app = app.clone();
     std::thread::spawn(move || {
