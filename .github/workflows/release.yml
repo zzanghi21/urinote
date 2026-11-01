@@ -60,7 +60,12 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: urinote-${{ runner.os }}-${{ strategy.job-index }}
+          # installers only (not intermediate folders such as the AppImage AppDir)
           path: |
-            uri-memo/src-tauri/target/release/bundle/
-            uri-memo/src-tauri/target/*/release/bundle/
-          if-no-files-found: ignore
+            uri-memo/src-tauri/target/**/release/bundle/deb/*.deb
+            uri-memo/src-tauri/target/**/release/bundle/rpm/*.rpm
+            uri-memo/src-tauri/target/**/release/bundle/appimage/*.AppImage
+            uri-memo/src-tauri/target/**/release/bundle/dmg/*.dmg
+            uri-memo/src-tauri/target/**/release/bundle/msi/*.msi
+            uri-memo/src-tauri/target/**/release/bundle/nsis/*.exe
+          if-no-files-found: warn
