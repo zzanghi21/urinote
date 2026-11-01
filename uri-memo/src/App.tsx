@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { openStores } from "./data";
+import { FolderService } from "./domain/folderService";
 import { NoteService } from "./domain/noteService";
 import { EditorPane } from "./features/notes/EditorPane";
 import { useNotes } from "./features/notes/notesStore";
 import { Sidebar } from "./features/notes/Sidebar";
+import { SettingsDialog } from "./features/settings/SettingsDialog";
 import { FriendsDialog } from "./features/share/FriendsDialog";
 import { ShareDialog } from "./features/share/ShareDialog";
 import { useShare } from "./features/share/shareStore";
@@ -27,11 +29,16 @@ function App() {
     if (started.current) return;
     started.current = true;
     openStores()
-      .then(({ notes, docs }) =>
-        useNotes
+      .then(({ notes, docs, folders }) => {
+        const service = new NoteService(notes, docs);
+        return useNotes
           .getState()
-          .init(new NoteService(notes, docs), window.matchMedia(TWO_PANE_QUERY).matches),
-      )
+          .init(
+            service,
+            new FolderService(folders, service),
+            window.matchMedia(TWO_PANE_QUERY).matches,
+          );
+      })
       .then(() => (isDesktopApp ? restoreOpenStickies() : undefined))
       .catch((e: unknown) => setError(String(e)));
     void useShare.getState().init();
@@ -93,6 +100,7 @@ function App() {
       <EditorPane />
       <FriendsDialog />
       <ShareDialog />
+      <SettingsDialog />
     </main>
   );
 }

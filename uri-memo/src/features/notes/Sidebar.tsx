@@ -1,6 +1,8 @@
 import type { NoteView } from "../../domain/note";
 import { OfferBanner } from "../share/ShareDialog";
+import { useSettings } from "../settings/settingsStore";
 import { useShare } from "../share/shareStore";
+import { FolderBar } from "./FolderBar";
 import { NoteList } from "./NoteList";
 import { useNotes } from "./notesStore";
 
@@ -49,6 +51,15 @@ export function Sidebar({ searchRef }: { searchRef: React.RefObject<HTMLInputEle
         )}
         <button
           type="button"
+          className="icon-btn"
+          onClick={() => useSettings.getState().setDialogOpen(true)}
+          title="설정"
+          aria-label="설정"
+        >
+          ⚙
+        </button>
+        <button
+          type="button"
           className="new-btn"
           onClick={() => create()}
           title="새 메모 (Ctrl+N)"
@@ -83,6 +94,7 @@ export function Sidebar({ searchRef }: { searchRef: React.RefObject<HTMLInputEle
           </button>
         ))}
       </nav>
+      <FolderBar />
 
       <NoteList />
     </aside>

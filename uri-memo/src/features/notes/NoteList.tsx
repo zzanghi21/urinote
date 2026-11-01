@@ -10,6 +10,9 @@ export function NoteList() {
   const query = useNotes((s) => s.query);
   const selectedId = useNotes((s) => s.selectedId);
   const select = useNotes((s) => s.select);
+  const folders = useNotes((s) => s.folders);
+  const folderId = useNotes((s) => s.folderId);
+  const folderNames = new Map(folders.map((f) => [f.id, f.name]));
 
   if (notes.length === 0) {
     const message = query
@@ -18,7 +21,9 @@ export function NoteList() {
         ? "휴지통이 비어 있습니다."
         : view === "pinned"
           ? "고정한 메모가 없습니다."
-          : "메모가 없습니다.\n+ 버튼으로 새 메모를 만드세요.";
+          : folderId
+            ? "이 폴더에 메모가 없습니다.\n+ 버튼을 누르면 이 폴더에 만듭니다."
+            : "메모가 없습니다.\n+ 버튼으로 새 메모를 만드세요.";
     return <p className="note-list-empty">{message}</p>;
   }
 
@@ -51,6 +56,9 @@ export function NoteList() {
             <span className="note-card-time">
               {formatNoteTime(
                 view === "trash" ? (note.deletedAt ?? note.updatedAt) : note.updatedAt,
+              )}
+              {folderId === null && note.folderId && folderNames.get(note.folderId) && (
+                <span className="note-card-folder"> · {folderNames.get(note.folderId)}</span>
               )}
             </span>
           </button>

@@ -41,6 +41,8 @@ export type NoteView = "all" | "pinned" | "trash";
 export interface NoteFilter {
   view: NoteView;
   query?: string;
+  /** 이 폴더의 메모만 (휴지통 보기에서는 무시). 없으면 모든 폴더 */
+  folderId?: string | null;
 }
 
 export function newNote(overrides: Partial<Note> = {}, now = Date.now()): Note {
@@ -89,6 +91,7 @@ export function matchesFilter(note: Note, filter: NoteFilter): boolean {
   } else {
     if (note.deletedAt !== null) return false;
     if (filter.view === "pinned" && !note.pinned) return false;
+    if (filter.folderId && note.folderId !== filter.folderId) return false;
   }
   const query = filter.query?.trim().toLowerCase();
   if (!query) return true;

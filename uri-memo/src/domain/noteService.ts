@@ -31,10 +31,15 @@ export class NoteService {
     return this.repo.get(id);
   }
 
-  async create(color: NoteColor = "yellow"): Promise<Note> {
-    const note = newNote({ color }, this.now());
+  async create(color: NoteColor = "yellow", folderId: string | null = null): Promise<Note> {
+    const note = newNote({ color, folderId }, this.now());
     await this.repo.upsert(note);
     return note;
+  }
+
+  /** 지운 폴더의 메모를 폴더 없음으로 (다른 편집과 섞이지 않게 순서대로) */
+  clearFolder(folderId: string) {
+    return this.enqueue(() => this.repo.clearFolder(folderId));
   }
 
   async edit(id: string, edit: NoteEdit): Promise<Note | null> {

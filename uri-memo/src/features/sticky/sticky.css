@@ -115,7 +115,7 @@ html.sticky-mode #root {
 }
 
 .sticky .note-editor-content {
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale, 1));
 }
 
 /* 서식 도구모음은 메모를 편집할 때만 보인다 */

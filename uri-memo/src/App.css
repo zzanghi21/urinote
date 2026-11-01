@@ -40,24 +40,23 @@
   -webkit-text-size-adjust: 100%;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1c1c1e;
-    --surface: #252527;
-    --text: #ecebe8;
-    --text-muted: #9c9a94;
-    --border: #3a3a3c;
-    --accent: #f2c500;
+/* 테마는 설정(시스템/라이트/다크)에 따라 settingsStore 가 data-theme 을 붙인다 */
+:root[data-theme="dark"] {
+  --bg: #1c1c1e;
+  --surface: #252527;
+  --text: #ecebe8;
+  --text-muted: #9c9a94;
+  --border: #3a3a3c;
+  --accent: #f2c500;
 
-    --note-yellow: #4a4223;
-    --note-green: #2f4229;
-    --note-pink: #4a2c38;
-    --note-purple: #3a3150;
-    --note-blue: #263b4d;
-    --note-gray: #3a3a3a;
-    --note-charcoal: #151515;
-    --note-charcoal-text: #ecebe8;
-  }
+  --note-yellow: #4a4223;
+  --note-green: #2f4229;
+  --note-pink: #4a2c38;
+  --note-purple: #3a3150;
+  --note-blue: #263b4d;
+  --note-gray: #3a3a3a;
+  --note-charcoal: #151515;
+  --note-charcoal-text: #ecebe8;
 }
 
 * {
@@ -393,7 +392,7 @@ input:focus-visible {
 .note-editor-content {
   min-height: 100%;
   outline: none;
-  font-size: 16px;
+  font-size: calc(16px * var(--font-scale, 1));
   line-height: 1.65;
 }
 
@@ -503,4 +502,108 @@ input:focus-visible {
   .editor-meta {
     display: none;
   }
+}
+
+/* ---------- 폴더 ---------- */
+.sidebar-header {
+  gap: 4px;
+}
+
+.sidebar-header .brand {
+  flex: 1;
+}
+
+.folder-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: none;
+}
+
+.folder-chip {
+  flex: none;
+  max-width: 160px;
+  padding: 3px 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-chip.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.folder-chip.add {
+  border-style: dashed;
+}
+
+.folder-menu-wrap {
+  position: relative;
+  flex: none;
+}
+
+/* 폴더 막대는 가로 스크롤되므로 메뉴는 화면 기준으로 띄운다 */
+.folder-menu {
+  position: fixed;
+  z-index: 50;
+  display: grid;
+  min-width: 120px;
+  margin-top: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.15);
+}
+
+.folder-menu button {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: left;
+}
+
+.folder-menu button:hover {
+  background: var(--bg);
+}
+
+.folder-menu .danger {
+  color: var(--danger);
+}
+
+.folder-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.folder-select {
+  max-width: 120px;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+}
+
+.note-card-folder {
+  color: var(--text-muted);
 }

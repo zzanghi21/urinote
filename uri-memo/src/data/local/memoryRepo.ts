@@ -32,6 +32,13 @@ export class MemoryNoteRepository implements NoteRepository {
     this.persist();
   }
 
+  async clearFolder(folderId: string): Promise<void> {
+    for (const note of this.notes.values()) {
+      if (note.folderId === folderId) note.folderId = null;
+    }
+    this.persist();
+  }
+
   async purgeTrash(before: number): Promise<number> {
     let count = 0;
     for (const note of this.notes.values()) {

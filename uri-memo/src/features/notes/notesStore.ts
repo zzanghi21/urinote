@@ -1,8 +1,11 @@
 import { create } from "zustand";
+import type { Folder } from "../../domain/folder";
+import type { FolderService } from "../../domain/folderService";
 import type { Note, NoteColor, NoteView } from "../../domain/note";
 import type { NoteEdit, NoteService } from "../../domain/noteService";
 import { isDesktopApp } from "../../platform/env";
 import { emitNoteChanged } from "../../platform/events";
+import { currentSettings } from "../settings/settingsStore";
 import { forgetSticky, isStickyOpen, openSticky } from "../../platform/stickyWindows";
 import { flushPendingEdit } from "./editorFlush";
 
@@ -13,10 +16,20 @@ interface NotesState {
   query: string;
   selectedId: string | null;
   ready: boolean;
+  folders: Folder[];
+  /** 목록에 보이는 폴더. null 이면 모든 폴더 */
+  folderId: string | null;
 
   /** selectFirst: 2단 화면(데스크톱)에서 첫 메모를 바로 연다 */
-  init(service: NoteService, selectFirst?: boolean): Promise<void>;
+  init(service: NoteService, folders: FolderService, selectFirst?: boolean): Promise<void>;
   setView(view: NoteView): Promise<void>;
+  setFolder(folderId: string | null): Promise<void>;
+  /** 새 폴더를 만들고 그 폴더를 연다 */
+  createFolder(name: string): Promise<void>;
+  renameFolder(id: string, name: string): Promise<void>;
+  moveToFolder(id: string, folderId: string | null): Promise<void>;
+  /** 폴더만 지운다 (메모는 "폴더 없음"으로) */
+  deleteFolder(id: string): Promise<void>;
   /** 검색어는 바로 반영하고 목록 조회는 디바운스한다 */
   setQuery(query: string): void;
   select(id: string | null): void;
@@ -30,6 +43,8 @@ interface NotesState {
   refresh(): Promise<void>;
   /** 다른 창(스티키)에서 메모 메타데이터·캐시가 바뀌었을 때. 본문은 docSession 이 실시간 병합한다. */
   onExternalChange(): Promise<void>;
+  /** 폴더·메모를 통째로 다시 읽는다 (가져오기 후) */
+  reloadAll(): Promise<void>;
 }
 
 const SEARCH_DEBOUNCE_MS = 150;
@@ -37,10 +52,19 @@ const SEARCH_DEBOUNCE_MS = 150;
 export const useNotes = create<NotesState>((set, get) => {
   let searchTimer: number | undefined;
 
+  let folderService: FolderService | null = null;
+
   const service = () => {
     const s = get().service;
     if (!s) throw new Error("notes store not initialized");
     return s;
+  };
+
+  const reloadFolders = async () => {
+    const folders = (await folderService?.list()) ?? [];
+    // 보고 있던 폴더가 다른 창에서 지워졌으면 모든 폴더로
+    const folderId = folders.some((f) => f.id === get().folderId) ? get().folderId : null;
+    set({ folders, folderId });
   };
 
   return {
@@ -50,25 +74,64 @@ export const useNotes = create<NotesState>((set, get) => {
     query: "",
     selectedId: null,
     ready: false,
+    folders: [],
+    folderId: null,
 
-    async init(svc, selectFirst = false) {
+    async init(svc, folders, selectFirst = false) {
       set({ service: svc });
+      folderService = folders;
       await svc.migrateLegacyContent();
       await svc.purgeExpiredTrash();
       await svc.compactDocs();
+      await reloadFolders();
       await get().refresh();
       set({ ready: true, selectedId: selectFirst ? (get().notes[0]?.id ?? null) : null });
     },
 
     async refresh() {
-      const { view, query } = get();
-      const notes = await service().list({ view, query });
+      const { view, query, folderId } = get();
+      const notes = await service().list({ view, query, folderId });
       set({ notes });
     },
 
     async setView(view) {
       leaveSelected();
       set({ view, selectedId: null });
+      await get().refresh();
+    },
+
+    async setFolder(folderId) {
+      if (folderId === get().folderId) return;
+      leaveSelected();
+      set({ folderId, selectedId: null });
+      await get().refresh();
+    },
+
+    async createFolder(name) {
+      const folder = await folderService?.create(name);
+      if (!folder) return;
+      await reloadFolders();
+      if (get().view === "trash") set({ view: "all" });
+      await get().setFolder(folder.id);
+    },
+
+    async renameFolder(id, name) {
+      if (!(await folderService?.rename(id, name))) return;
+      await reloadFolders();
+    },
+
+    async moveToFolder(id, folderId) {
+      await service().edit(id, { folderId });
+      emitNoteChanged(id);
+      // 보고 있던 폴더에서 빠지면 메모가 목록에서 사라지므로, 옮긴 폴더를 따라간다
+      const viewing = get().folderId;
+      if (viewing !== null && viewing !== folderId) set({ folderId });
+      await get().refresh();
+    },
+
+    async deleteFolder(id) {
+      await folderService?.remove(id);
+      await reloadFolders();
       await get().refresh();
     },
 
@@ -85,7 +148,8 @@ export const useNotes = create<NotesState>((set, get) => {
 
     async create(color) {
       leaveSelected();
-      const note = await service().create(color);
+      // 폴더를 보고 있으면 그 폴더에 만든다
+      const note = await service().create(color ?? currentSettings().defaultColor, get().folderId);
       emitNoteChanged(note.id);
       window.clearTimeout(searchTimer);
       set({ view: "all", query: "", selectedId: note.id });
@@ -93,7 +157,7 @@ export const useNotes = create<NotesState>((set, get) => {
     },
 
     async createSticky() {
-      const note = await service().create();
+      const note = await service().create(currentSettings().defaultColor);
       emitNoteChanged(note.id);
       await get().refresh();
       await openSticky(note.id, { at: "cursor" });
@@ -125,6 +189,11 @@ export const useNotes = create<NotesState>((set, get) => {
     },
 
     async onExternalChange() {
+      await get().refresh();
+    },
+
+    async reloadAll() {
+      await reloadFolders();
       await get().refresh();
     },
   };

@@ -54,6 +54,10 @@ export class SqliteNoteRepository implements NoteRepository {
     } else {
       where.push("n.deleted_at IS NULL");
       if (filter.view === "pinned") where.push("n.pinned = 1");
+      if (filter.folderId) {
+        where.push(`n.folder_id = $${params.length + 1}`);
+        params.push(filter.folderId);
+      }
     }
 
     const query = filter.query?.trim();
@@ -118,6 +122,10 @@ export class SqliteNoteRepository implements NoteRepository {
 
   async remove(id: string): Promise<void> {
     await this.db.execute("DELETE FROM notes WHERE id = $1", [id]);
+  }
+
+  async clearFolder(folderId: string): Promise<void> {
+    await this.db.execute("UPDATE notes SET folder_id = NULL WHERE folder_id = $1", [folderId]);
   }
 
   async purgeTrash(before: number): Promise<number> {

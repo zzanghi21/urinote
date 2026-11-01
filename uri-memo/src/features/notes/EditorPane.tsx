@@ -10,6 +10,7 @@ import { useNotes, useSelectedNote } from "./notesStore";
 
 export function EditorPane() {
   const note = useSelectedNote();
+  const folders = useNotes((s) => s.folders);
   const { select, edit, trash, restore, deleteForever } = useNotes.getState();
   const shareAvailable = useShare((s) => s.available);
   const share = useShare((s) => (note ? s.shares[note.id] : undefined));
@@ -75,6 +76,24 @@ export function EditorPane() {
               {formatNoteTime(note.updatedAt)} 수정
             </span>
             <ColorPicker value={note.color} onChange={(color) => edit(note.id, { color })} />
+            {folders.length > 0 && (
+              <select
+                className="folder-select"
+                value={note.folderId ?? ""}
+                onChange={(e) =>
+                  useNotes.getState().moveToFolder(note.id, e.target.value || null)
+                }
+                aria-label="폴더"
+                title="폴더"
+              >
+                <option value="">폴더 없음</option>
+                {folders.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            )}
             {shared && <PresenceAvatars members={online} />}
             {shareAvailable && (
               <button
