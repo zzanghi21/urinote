@@ -6,12 +6,13 @@ import { NoteService } from "../../domain/noteService";
 import { emitDocUpdate, emitNoteChanged, P2P_SOURCE } from "../../platform/events";
 import type { NoteBridge } from "./shareEngine";
 
-/** 받은 편집으로 제목·검색 캐시를 다시 계산하는 간격 */
+/** Interval for recomputing title/search caches from received edits */
 const CACHE_DEBOUNCE_MS = 500;
 
 /**
- * 공유 엔진과 앱의 메모 저장소를 잇는다.
- * 받은 업데이트는 문서 로그에 `remote` 로 저장하고 `doc:update`(source=p2p)로 모든 창에 알린다.
+ * Connects the share engine to the app's note stores.
+ * Received updates are stored in the document log as `remote` and announced to every window via
+ * `doc:update` (source=p2p).
  */
 export function createNoteBridge(stores: Stores, onNotesChanged: () => void): NoteBridge {
   const service = new NoteService(stores.notes, stores.docs);

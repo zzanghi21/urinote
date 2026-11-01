@@ -7,14 +7,14 @@ import { flushAllDocs } from "../notes/docSession";
 import { flushPendingEdit } from "../notes/editorFlush";
 
 /**
- * 자동 업데이트 (Hub 창 전용). GitHub Releases 의 latest.json 을 확인하고,
- * 사용자가 [설치]를 누르면 모든 창의 입력을 저장한 뒤 내려받아 설치하고 다시 시작한다.
- * 업데이트 파일은 GitHub Secrets 의 키로 서명되고, 앱은 tauri.conf.json 의 공개키로 검증한다.
+ * Auto-update (hub window only). Checks latest.json on GitHub Releases; when the user presses
+ * [Install], saves input in every window, downloads, installs and restarts.
+ * Update files are signed with the key in GitHub Secrets and verified with the public key in tauri.conf.json.
  */
 
 const FIRST_CHECK_DELAY_MS = 15_000;
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
-/** 다른 창들이 app://flush 를 받고 저장할 시간 (트레이 "종료"와 같음) */
+/** Time for other windows to receive app://flush and save (same as tray "Quit") */
 const FLUSH_WAIT_MS = 400;
 
 type Status = "idle" | "available" | "installing" | "error";
@@ -22,12 +22,12 @@ type Status = "idle" | "available" | "installing" | "error";
 interface UpdateState {
   status: Status;
   version: string | null;
-  /** 내려받은 비율 (0~100), 크기를 모르면 null */
+  /** Downloaded percentage (0–100), null if the size is unknown */
   progress: number | null;
   error: string | null;
   init(): void;
   install(): Promise<void>;
-  /** 이번에는 넘어간다 (다음 확인 때 다시 알림) */
+  /** Skip for now (asked again at the next check) */
   dismiss(): void;
 }
 
@@ -43,7 +43,7 @@ export const useUpdate = create<UpdateState>((set, get) => {
       update = found;
       set({ status: "available", version: found.version, error: null });
     } catch {
-      // 오프라인이거나 아직 공개된 릴리스가 없다 → 다음 확인 때 다시
+      // offline or no published release yet → try again at the next check
     }
   };
 

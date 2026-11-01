@@ -2,15 +2,15 @@ import { error as logError, warn as logWarn } from "@tauri-apps/plugin-log";
 import { inTauri } from "./env";
 
 /**
- * 화면(웹뷰)의 오류·경고를 앱 로그 파일(urinote.log)에도 남긴다. 사용자 PC 에서 생긴 문제를 볼 수 있게.
- * 우리 코드는 오류 객체와 상황만 console 에 쓰고 메모 본문은 쓰지 않는다. 길이도 자른다.
+ * Also writes webview errors and warnings to the app log (urinote.log), so problems on users' PCs
+ * can be seen. Our code only logs error objects and context, never note bodies; length is capped.
  */
 const MAX = 2000;
 
 let sending = false;
 
 function forward(level: "error" | "warn", args: unknown[]) {
-  if (sending) return; // 로그 전송 중 생긴 오류로 다시 들어오지 않게
+  if (sending) return; // don't re-enter from an error raised while sending the log
   sending = true;
   const text = args.map(describe).join(" ").slice(0, MAX);
   const label = `[${window.location.search.includes("sticky") ? "sticky" : "hub"}] ${text}`;

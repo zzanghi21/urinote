@@ -8,7 +8,7 @@ export function docFromUpdates(updates: Uint8Array[]): Y.Doc {
   return doc;
 }
 
-/** M1/M2 에서 저장한 TipTap JSON 본문을 Yjs 문서 상태로 변환한다 */
+/** Converts a TipTap JSON body saved by M1/M2 into Yjs document state */
 export function legacyContentToUpdate(json: string): Uint8Array | null {
   if (!json) return null;
   let parsed: unknown;
@@ -24,8 +24,8 @@ export function legacyContentToUpdate(json: string): Uint8Array | null {
 }
 
 /**
- * 편집기 없이 문서에서 텍스트를 뽑는다 (다른 기기에서 받은 변경으로 목록·검색 캐시를 갱신할 때).
- * 편집기의 getText({ blockSeparator: "\n" }) 와 같은 결과를 내도록 텍스트 블록마다 줄을 나눈다.
+ * Extracts text from a document without an editor (to refresh the list/search cache from remote changes).
+ * Splits lines per text block to match the editor's getText({ blockSeparator: "\n" }).
  */
 export function plainTextFromDoc(doc: Y.Doc): string {
   const lines: string[] = [];

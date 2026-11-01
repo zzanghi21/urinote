@@ -17,11 +17,11 @@ const TITLE_MAX = 100;
 export interface Note {
   id: string;
   folderId: string | null;
-  /** 친구와 공유 중이면 공유 ID (= 메모 ID), 개인 메모면 null */
+  /** Share ID (= note ID) when shared with friends, null for personal notes */
   spaceId: string | null;
-  /** 본문 첫 줄에서 자동 생성 (목록·검색용) */
+  /** Derived from the first line of the body (for the list and search) */
   title: string;
-  /** TipTap JSON 문자열 */
+  /** TipTap JSON string */
   content: string;
   plainText: string;
   color: NoteColor;
@@ -30,9 +30,9 @@ export interface Note {
   createdAt: number;
   updatedAt: number;
   deletedAt: number | null;
-  /** 마지막으로 동기화한 서버 리비전 */
+  /** Last synced server revision */
   rev: number;
-  /** 서버에 아직 올리지 않은 변경이 있는지 */
+  /** Whether there are changes not yet uploaded to the server */
   dirty: boolean;
 }
 
@@ -41,7 +41,7 @@ export type NoteView = "all" | "pinned" | "trash";
 export interface NoteFilter {
   view: NoteView;
   query?: string;
-  /** 이 폴더의 메모만 (휴지통 보기에서는 무시). 없으면 모든 폴더 */
+  /** Only notes in this folder (ignored in the trash view). All folders if absent */
   folderId?: string | null;
 }
 
@@ -70,13 +70,13 @@ export function titleFromText(plainText: string): string {
   return firstLine.trim().slice(0, TITLE_MAX);
 }
 
-/** 제목 줄을 뺀 나머지 본문의 앞부분 (목록 미리보기) */
+/** Start of the body after the title line (list preview) */
 export function previewFromText(plainText: string, max = 120): string {
   const lines = plainText.split("\n").filter((line) => line.trim() !== "");
   return lines.slice(1).join(" ").slice(0, max);
 }
 
-/** 정렬: 휴지통은 삭제일 최신순, 그 외는 고정 우선 + 수정일 최신순 */
+/** Sorting: trash by newest deletion; otherwise pinned first, then newest modification */
 export function compareNotes(view: NoteView) {
   return (a: Note, b: Note): number => {
     if (view === "trash") return (b.deletedAt ?? 0) - (a.deletedAt ?? 0);

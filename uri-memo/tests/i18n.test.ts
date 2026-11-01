@@ -18,7 +18,7 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-/** 주석을 지운다 (문자열 안의 // 는 남긴다) */
+/** Removes comments (keeps // inside strings) */
 function stripComments(code: string) {
   return code.replace(
     /("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`)|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
@@ -28,7 +28,7 @@ function stripComments(code: string) {
 
 const STRING = /"((?:\\.|[^"\\\n])*)"|'((?:\\.|[^'\\\n])*)'|`((?:\\.|[^`\\])*)`/g;
 
-/** 소스의 한국어 문자열 리터럴, 그리고 문자열 밖에 남은 한국어(JSX 텍스트 등) */
+/** Korean string literals in the source, and Korean left outside strings (JSX text etc.) */
 function scan() {
   const literals: { file: string; text: string; template: boolean }[] = [];
   const bare: { file: string; line: string }[] = [];
@@ -38,7 +38,7 @@ function scan() {
     for (const m of code.matchAll(STRING)) {
       const raw = m[1] ?? m[2] ?? m[3] ?? "";
       if (!HANGUL.test(raw)) continue;
-      // 소스의 이스케이프(\n, \")를 실제 문자로
+      // turn source escapes (\n, \") into real characters
       const text = JSON.parse(
         `"${raw.replace(/\\'/g, "'").replace(/(?<!\\)"/g, '\\"')}"`,
       ) as string;

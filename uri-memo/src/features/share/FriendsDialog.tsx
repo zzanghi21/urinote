@@ -5,7 +5,7 @@ import type { PairingView } from "./pairing";
 import { shortDeviceId, useShare } from "./shareStore";
 import "./share.css";
 
-/** 친구 목록 + 친구 추가 (같은 Wi-Fi). 열려 있는 동안 친구 추가 모드(이름 광고)가 켜진다. */
+/** Friend list + add a friend (same Wi-Fi). While open, Add-a-friend mode (advertising the name) is on. */
 export function FriendsDialog() {
   const t = useT();
   const s = useShare();
@@ -178,7 +178,7 @@ function ContactRow({ id, name, online }: { id: string; name: string; online: bo
   );
 }
 
-/** 자동으로 찾지 못하는 네트워크용: 연결 코드를 메신저 등으로 주고받아 직접 연결 */
+/** For networks where discovery fails: exchange connection codes via a messenger and connect directly */
 function ManualConnect() {
   const t = useT();
   const { myConnectCode, connectWithCode, pairing } = useShare();
@@ -301,7 +301,7 @@ function PairingPanel({ view }: { view: PairingView }) {
         return (
           <>
             <p>{t("친구 등록을 하지 못했습니다.")}</p>
-            {/* 상대 기기가 보낸 이유도 한국어 원문이 키라서 내 언어로 보인다 */}
+            {/* Reasons sent by the other device are Korean keys too, so they show in my language */}
             <p className="dialog-hint">{view.error && t(view.error)}</p>
             <div className="dialog-actions">
               <button type="button" className="text-btn" onClick={dismissPairing}>

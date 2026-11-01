@@ -1,13 +1,13 @@
 import { currentLocale, t } from "../i18n";
 import type { Note } from "./note";
 
-/** 메모 알림 (N-01) 시각 계산. 시각은 Unix 밀리초, 화면 표시는 기기 시간대 */
+/** Reminder (N-01) time helpers. Times are Unix milliseconds, displayed in the device time zone */
 
 const HOUR = 60 * 60 * 1000;
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-/** <input type="datetime-local"> 값 (YYYY-MM-DDTHH:mm) */
+/** <input type="datetime-local"> value (YYYY-MM-DDTHH:mm) */
 export function toLocalInput(ms: number): string {
   const d = new Date(ms);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -33,7 +33,7 @@ export interface ReminderPreset {
   at: number;
 }
 
-/** 빠른 선택: 1시간 뒤, 오늘 저녁(지났으면 빠짐), 내일 아침, 다음 주 월요일 아침 */
+/** Presets: in 1 hour, this evening (omitted if past), tomorrow morning, next Monday morning */
 export function reminderPresets(now: number): ReminderPreset[] {
   const presets: ReminderPreset[] = [{ label: t("1시간 뒤"), at: now + HOUR }];
   const evening = at(now, 0, 18);
@@ -45,7 +45,7 @@ export function reminderPresets(now: number): ReminderPreset[] {
   return presets;
 }
 
-/** 목록·머리글 표시: "오늘 18:00", "내일 09:00", "11월 2일 (월) 09:00", 다른 해면 연도 포함 */
+/** List/header display: "Today 18:00", "Tomorrow 09:00", "Mon, Nov 2 09:00", with the year if different */
 export function formatReminder(ms: number, now = Date.now()): string {
   const d = new Date(ms);
   const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -63,13 +63,13 @@ export function formatReminder(ms: number, now = Date.now()): string {
     weekday: new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d),
     time,
   };
-  // 한국어: "11월 2일 (월) 09:00", 영어: "Mon, Nov 2 09:00"
+  // Korean: "11월 2일 (월) 09:00", English: "Mon, Nov 2 09:00"
   return sameYear
     ? t("{month} {day}일 ({weekday}) {time}", vars)
     : t("{year}년 {month} {day}일 ({weekday}) {time}", vars);
 }
 
-/** 휴지통에 없는 메모의 알림 중 지난 것(놓친 알림)과 남은 것 */
+/** Reminders of notes outside the trash: past (missed) and upcoming */
 export function splitReminders(notes: Note[], now: number) {
   const active = notes.filter((n) => n.remindAt !== null && n.deletedAt === null);
   return {

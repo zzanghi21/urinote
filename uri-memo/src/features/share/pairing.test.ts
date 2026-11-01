@@ -11,8 +11,8 @@ interface Side {
 }
 
 /**
- * 두 기기를 메모리 안에서 잇는다. 메시지는 실제처럼 인코딩·디코딩하고 순서대로 비동기 전달한다.
- * `tamper` 로 전송 중 메시지를 바꿔 중간자를 흉내 낼 수 있다.
+ * Connects two devices in memory. Messages are encoded/decoded like the real thing and delivered
+ * asynchronously in order. `tamper` can modify messages in transit to simulate a man in the middle.
  */
 function wire(tamper?: (from: string, m: PairMessage) => PairMessage) {
   const a: Side = { id: "aaaa", name: "민지 PC", views: [], paired: [], session: null };
@@ -66,7 +66,7 @@ describe("pairing", () => {
 
     await a.session.confirm(true);
     await settle();
-    expect(a.paired).toEqual([]); // 상대 확인 전에는 저장하지 않는다
+    expect(a.paired).toEqual([]); // not saved before the other side confirms
     await b.session!.confirm(true);
     await settle();
 
@@ -112,8 +112,8 @@ describe("pairing", () => {
     const nonceA = crypto.getRandomValues(new Uint8Array(32));
     const nonceB = crypto.getRandomValues(new Uint8Array(32));
     const direct = await pairingCode("aaaa", nonceA, "bbbb", nonceB);
-    expect(await pairingCode("bbbb", nonceB, "aaaa", nonceA)).toBe(direct); // 순서 무관
-    // 중간자 M 이 A 에게는 M 으로, B 에게는 M' 으로 보이면 기기 ID 가 달라 코드가 달라진다
+    expect(await pairingCode("bbbb", nonceB, "aaaa", nonceA)).toBe(direct); // order-independent
+    // if a man in the middle appears as M to A and as M' to B, the device IDs differ and so do the codes
     expect(await pairingCode("aaaa", nonceA, "mmmm", nonceB)).not.toBe(direct);
   });
 
@@ -121,7 +121,7 @@ describe("pairing", () => {
     const { a, b, deps } = wire();
     a.session = PairingSession.outgoing(deps(a, b), b.id, "B");
     await a.session.begin();
-    await a.session.handle({ t: "pair-confirm" }); // 코드를 보기도 전에 확인
+    await a.session.handle({ t: "pair-confirm" }); // confirming before even seeing the code
     expect(last(a).phase).toBe("failed");
   });
 

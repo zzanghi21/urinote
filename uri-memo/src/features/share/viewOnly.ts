@@ -1,20 +1,20 @@
 import type { Stores } from "../../data";
 import { roleOf } from "./membership";
 
-/** Hub 가 P2P 를 시작할 때 내 기기 ID 를 저장하는 설정 키 */
+/** Settings key where the hub stores my device ID when starting P2P */
 export const DEVICE_ID_KEY = "device_id";
-/** 친구에게 보이는 내 기기 이름 (사용자가 바꾼 경우에만 저장) */
+/** My device name as friends see it (stored only if the user changed it) */
 export const DEVICE_NAME_KEY = "device_name";
 
 export interface ShareAccess {
-  /** 지금 친구와 공유 중 (커서 표시 대상) */
+  /** Currently shared with friends (cursors are shown) */
   shared: boolean;
   viewOnly: boolean;
 }
 
 /**
- * 스티키 창용: 이 메모의 공유 상태와 내 권한.
- * P2P 는 Hub 창에서만 돌므로, Hub 가 저장해 둔 내 기기 ID 와 멤버 목록으로 판단한다.
+ * For sticky windows: this note's sharing state and my permission.
+ * P2P runs only in the hub, so this uses the device ID the hub stored plus the member list.
  */
 export async function shareAccess(stores: Stores, noteId: string): Promise<ShareAccess> {
   const none = { shared: false, viewOnly: false };

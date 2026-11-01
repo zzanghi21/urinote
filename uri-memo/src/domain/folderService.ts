@@ -12,7 +12,7 @@ export class FolderService {
     return this.folders.list();
   }
 
-  /** 이름이 비어 있으면 null. 같은 이름의 폴더가 있으면 그 폴더를 돌려준다 */
+  /** null if the name is empty. Returns the existing folder if one has the same name */
   async create(name: string): Promise<Folder | null> {
     const clean = cleanFolderName(name);
     if (!clean) return null;
@@ -34,7 +34,7 @@ export class FolderService {
     return next;
   }
 
-  /** 폴더만 지운다. 안의 메모는 지우지 않고 "폴더 없음"으로 옮긴다 */
+  /** Deletes only the folder. Its notes are kept and moved to "no folder" */
   async remove(id: string) {
     await this.notes.clearFolder(id);
     await this.folders.remove(id);

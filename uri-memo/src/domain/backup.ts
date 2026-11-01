@@ -8,15 +8,16 @@ import type { NoteRepository } from "./repository";
 import { parseSettings, type Settings } from "./settings";
 
 /**
- * JSON 내보내기·가져오기 (E-02).
+ * JSON export / import (E-02).
  *
- * 파일에는 메모(본문 Yjs 상태 + 개인 설정), 폴더, 앱 설정을 담는다.
- * 친구 목록·공유 멤버·기기 키는 담지 않는다 (기기에 묶인 정보이고, 파일이 새면 친구인 척할 수 있으므로).
+ * The file holds notes (Yjs body state + personal settings), folders and app settings.
+ * Friends, share members and device keys are not included (they are tied to the device, and a
+ * leaked file could be used to pose as a friend).
  *
- * 가져오기는 덮어쓰지 않고 합친다:
- * - 이미 있는 메모(같은 ID)는 본문만 Yjs 로 합치고, 색상·폴더 등 지금 기기의 설정은 그대로 둔다
- * - 없는 메모는 새로 만든다 (공유 표시는 붙이지 않는다: 개인 메모로 들어온다)
- * 같은 파일을 두 번 가져와도 내용이 겹치지 않는다.
+ * Import merges instead of overwriting:
+ * - existing notes (same ID) merge only their body via Yjs; this device's color, folder etc. stay
+ * - missing notes are created (without the shared mark: they arrive as personal notes)
+ * Importing the same file twice does not duplicate anything.
  */
 
 export const BACKUP_APP = "urinote";
@@ -31,9 +32,9 @@ export interface BackupNote {
   createdAt: number;
   updatedAt: number;
   deletedAt: number | null;
-  /** 읽기 쉽게 같이 넣는 본문 텍스트 (가져올 때는 doc 에서 다시 계산) */
+  /** Body text included for readability (recomputed from doc on import) */
   plainText: string;
-  /** base64(Yjs 문서 전체 상태) */
+  /** base64(full Yjs document state) */
   doc: string;
 }
 
@@ -115,7 +116,7 @@ export class BackupService {
           folderId: b.folderId ? (folderIds.get(b.folderId) ?? null) : null,
           color: b.color,
           pinned: b.pinned,
-          // 이미 지난 알림을 가져오면 한꺼번에 울리므로 버린다
+          // past reminders would all fire at once, so drop them
           remindAt: b.remindAt !== null && b.remindAt > this.now() ? b.remindAt : null,
           createdAt: b.createdAt,
           deletedAt: b.deletedAt,
@@ -130,7 +131,7 @@ export class BackupService {
     return { created, merged, folders: folderIds.size, settings: backup.settings };
   }
 
-  /** 파일의 폴더 ID → 내 기기의 폴더 ID. 같은 ID 나 같은 이름의 폴더가 있으면 그 폴더를 쓴다 */
+  /** Folder ID in the file → folder ID on this device. Reuses a folder with the same ID or name */
   private async importFolders(folders: BackupFile["folders"]) {
     const mine = await this.folders.list();
     const map = new Map<string, string>();
@@ -161,7 +162,7 @@ export class BackupService {
 
 export class BackupFormatError extends Error {}
 
-/** 파일 내용을 검사한다. 형식이 틀리면 BackupFormatError */
+/** Validates the file contents. Throws BackupFormatError if the format is wrong */
 export function parseBackup(text: string): BackupFile {
   let raw: unknown;
   try {
@@ -232,7 +233,7 @@ const isTime = (v: unknown): v is number => Number.isSafeInteger(v) && (v as num
 const bad = (where: string) =>
   new BackupFormatError(t("백업 파일이 손상되었습니다 ({where})", { where }));
 
-/** 다른 프로그램이 만든 이상한 데이터가 문서 저장소에 들어가지 않게, 실제로 적용되는지 확인한다 */
+/** Checks the update actually applies, so odd data from other programs never reaches the document store */
 function isYjsUpdate(update: Uint8Array) {
   try {
     Y.applyUpdate(new Y.Doc(), update);
@@ -242,7 +243,7 @@ function isYjsUpdate(update: Uint8Array) {
   }
 }
 
-/** 파일 이름: urinote-backup-2026-11-01.json */
+/** File name: urinote-backup-2026-11-01.json */
 export function backupFileName(now: number) {
   const d = new Date(now);
   const pad = (n: number) => String(n).padStart(2, "0");

@@ -1,6 +1,6 @@
 let flushEditor: (() => void) | null = null;
 
-/** 열린 편집기가 저장 대기 중인 입력을 즉시 저장하는 함수를 등록한다. 해제 함수를 반환한다. */
+/** Registers a function that saves an open editor's pending input immediately. Returns an unregister function. */
 export function registerEditorFlush(flush: () => void) {
   flushEditor = flush;
   return () => {
@@ -8,7 +8,7 @@ export function registerEditorFlush(flush: () => void) {
   };
 }
 
-/** 저장 대기 중인 입력을 지금 저장한다 (저장 요청은 동기적으로 큐에 들어간다) */
+/** Saves pending input now (the save request is queued synchronously) */
 export function flushPendingEdit() {
   flushEditor?.();
 }

@@ -1,8 +1,8 @@
-//! 업데이트 직전 DB 백업.
+//! DB backup before updates.
 //!
-//! 앱 버전이 바뀐 첫 실행에서, 프런트엔드가 DB 를 열어 마이그레이션을 돌리기 전에
-//! `urinote.db`(+ WAL·SHM)를 `backups/<이전 버전>-<시각>/` 에 복사해 둔다.
-//! 새 버전에서 문제가 생겨도 이전 상태로 되돌릴 수 있다. 최근 백업 몇 개만 남긴다.
+//! On the first run after the app version changes, before the frontend opens the DB and runs
+//! migrations, copies `urinote.db` (+ WAL/SHM) to `backups/<previous version>-<time>/`.
+//! If the new version has problems, the previous state can be restored. Only the latest few are kept.
 
 use std::{
     fs,
@@ -13,7 +13,7 @@ use std::{
 use anyhow::{Context, Result};
 use tauri::{App, Manager, Runtime};
 
-/// tauri-plugin-sql 이 `app_config_dir` 에 만드는 파일 (lib.rs 의 DB_URL 과 같아야 한다)
+/// File tauri-plugin-sql creates in `app_config_dir` (must match DB_URL in lib.rs)
 const DB_FILE: &str = "urinote.db";
 const VERSION_FILE: &str = "last-run-version";
 const BACKUP_DIR: &str = "backups";
@@ -29,12 +29,12 @@ pub fn run<R: Runtime>(app: &App<R>) {
     match result {
         Ok(Some(path)) => log::info!("DB 백업: {}", path.display()),
         Ok(None) => {}
-        // 백업에 실패해도 앱은 실행한다 (DB 는 건드리지 않았으므로)
+        // the app still starts if the backup fails (the DB was not touched)
         Err(e) => log::error!("DB 백업 실패: {e:#}"),
     }
 }
 
-/// 버전이 바뀌었고 DB 가 있으면 백업하고 그 폴더를 돌려준다
+/// Backs up the DB if the version changed and a DB exists, returning the backup folder
 fn backup_on_version_change(dir: &Path, version: &str, now: u64) -> Result<Option<PathBuf>> {
     let marker = dir.join(VERSION_FILE);
     let previous = fs::read_to_string(&marker).ok().map(|v| v.trim().to_string());
@@ -56,15 +56,15 @@ fn backup_on_version_change(dir: &Path, version: &str, now: u64) -> Result<Optio
         prune(&dir.join(BACKUP_DIR))?;
         backed_up = Some(target);
     }
-    // 백업이 끝난 뒤에만 기록한다 → 실패하면 다음 실행에서 다시 시도
+    // record only after the backup finished → retried on the next run if it failed
     fs::create_dir_all(dir)?;
     fs::write(&marker, version)?;
     Ok(backed_up)
 }
 
-/// 오래된 백업부터 지워 KEEP 개만 남긴다
+/// Deletes the oldest backups, keeping KEEP
 fn prune(backups: &Path) -> Result<()> {
-    // 폴더 이름 끝의 시각(<버전>-<초>)으로 정렬한다
+    // sort by the time at the end of the folder name (<version>-<seconds>)
     let mut dirs: Vec<_> = fs::read_dir(backups)?
         .filter_map(|e| e.ok())
         .filter(|e| e.path().is_dir())
@@ -102,15 +102,15 @@ mod tests {
     #[test]
     fn backs_up_once_per_version_change_and_keeps_the_latest() {
         let dir = temp_dir("backup");
-        // 첫 설치: DB 가 없으면 버전만 기록
+        // first install: without a DB, only the version is recorded
         assert_eq!(backup_on_version_change(&dir, "0.1.0", 1).unwrap(), None);
 
         fs::write(dir.join(DB_FILE), "v1").unwrap();
         fs::write(dir.join("urinote.db-wal"), "wal").unwrap();
-        // 같은 버전으로 다시 실행하면 백업하지 않는다
+        // running the same version again makes no backup
         assert_eq!(backup_on_version_change(&dir, "0.1.0", 2).unwrap(), None);
 
-        // 업데이트: 이전 버전 이름으로 DB·WAL 을 복사
+        // update: DB and WAL copied under the previous version's name
         let backup = backup_on_version_change(&dir, "0.2.0", 3).unwrap().unwrap();
         assert!(backup.ends_with("0.1.0-3"));
         assert_eq!(fs::read_to_string(backup.join(DB_FILE)).unwrap(), "v1");

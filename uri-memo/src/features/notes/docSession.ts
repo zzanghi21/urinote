@@ -3,10 +3,10 @@ import { openStores } from "../../data";
 import { fromBase64, toBase64 } from "../../domain/noteDoc";
 import { emitDocUpdate, onDocUpdateElsewhere } from "../../platform/events";
 
-/** 키 입력마다 DB에 쓰지 않도록 업데이트를 모아서 저장·전송한다 */
+/** Batches updates so the DB isn't written on every keystroke */
 const APPEND_DEBOUNCE_MS = 200;
 
-/** DB에서 읽었거나 다른 창에서 받은 업데이트 — 다시 저장·전송하지 않는다 */
+/** Updates read from the DB or received from other windows — never saved or sent again */
 const LOAD = Symbol("load");
 const OTHER_WINDOW = Symbol("other-window");
 
@@ -21,8 +21,8 @@ interface Session {
 const sessions = new Map<string, Session>();
 
 /**
- * 메모의 Yjs 문서를 연다. 같은 창 안에서는 메모마다 문서 1개를 공유한다.
- * 다른 창과는 `doc:update` 이벤트로 업데이트를 주고받아 실시간 병합한다.
+ * Opens a note's Yjs document. Within one window, each note shares a single document.
+ * Updates are exchanged with other windows via the `doc:update` event and merged live.
  */
 export async function acquireDoc(noteId: string): Promise<{ doc: Y.Doc; release(): void }> {
   let session = sessions.get(noteId);
@@ -47,7 +47,7 @@ export async function acquireDoc(noteId: string): Promise<{ doc: Y.Doc; release(
   };
 }
 
-/** 저장 대기 중인 본문 업데이트를 모두 저장한다 (창 닫기·앱 종료 직전) */
+/** Saves all pending body updates (right before closing a window or quitting) */
 export function flushAllDocs(): Promise<void> {
   return Promise.all([...sessions.values()].map((s) => s.flush())).then(() => undefined);
 }
@@ -58,7 +58,7 @@ function createSession(noteId: string): Session {
   let timer: number | undefined;
   let writing: Promise<void> = Promise.resolve();
 
-  // DB에 먼저 쓰고 나서 다른 창에 알린다. 다른 창이 DB를 읽은 직후에 쓴 업데이트도 이벤트로 받게 된다.
+  // Write to the DB first, then notify other windows, so a window that just read the DB still gets later updates via the event.
   const flush = () => {
     window.clearTimeout(timer);
     if (pending.length === 0) return writing;
@@ -82,7 +82,7 @@ function createSession(noteId: string): Session {
 
   let unlisten: () => void = () => {};
   const ready = (async () => {
-    // 구독을 먼저 끝낸 뒤 DB를 읽는다 (그 사이의 업데이트 유실 방지, 중복 적용은 Yjs가 무시)
+    // Subscribe before reading the DB (no updates lost in between; Yjs ignores duplicates)
     unlisten = await onDocUpdateElsewhere(noteId, (update) =>
       Y.applyUpdate(doc, fromBase64(update), OTHER_WINDOW),
     );

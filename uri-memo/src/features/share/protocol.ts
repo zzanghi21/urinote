@@ -1,6 +1,6 @@
 /**
- * 친구 공유 P2P 메시지 (DESIGN.md 4.9.3, 4.9.5). Rust 계층은 바이트만 나르고 해석은 여기서 한다.
- * 상대가 보낸 데이터는 믿지 않는다: 형식이 맞지 않으면 버린다.
+ * P2P messages for friend sharing (DESIGN.md 4.9.3, 4.9.5). The Rust layer only carries bytes; they
+ * are interpreted here. Data from the other side is never trusted: malformed messages are dropped.
  */
 
 import { NOTE_COLORS, type NoteColor } from "../../domain/note";
@@ -11,33 +11,33 @@ const MAX_NAME = 64;
 const MAX_TOKEN = 128;
 
 export type PairMessage =
-  /** 친구 요청 (요청한 쪽 → 받는 쪽). commit = base64(SHA-256(임의값)) */
+  /** Friend request (requester → receiver). commit = base64(SHA-256(random value)) */
   | { t: "pair-request"; name: string; commit: string }
-  /** 요청 수락 (받는 쪽 → 요청한 쪽) */
+  /** Accepting the request (receiver → requester) */
   | { t: "pair-accept"; name: string; commit: string }
-  /** 상대의 commit 을 받은 뒤에만 보내는 임의값 공개 */
+  /** Random value reveal, sent only after receiving the other side's commit */
   | { t: "pair-reveal"; nonce: string }
-  /** 사용자가 두 화면의 코드가 같다고 확인 */
+  /** The user confirmed both screens show the same code */
   | { t: "pair-confirm" }
   | { t: "pair-cancel"; reason: string };
 
-/** 공유·동기화 메시지 (DESIGN.md 4.9.5). base64 필드는 Yjs 데이터 */
+/** Sharing/sync messages (DESIGN.md 4.9.5). base64 fields hold Yjs data */
 export type SyncMessage =
-  /** 연결 직후: 상대와 관련된 내 공유 메모와 멤버 목록 버전 */
+  /** Right after connecting: my shared notes involving the peer and their member-list versions */
   | { t: "hello"; shares: { noteId: string; version: number }[] }
-  /** 서명된 멤버 목록 (상대가 가진 것보다 새 버전일 때) */
+  /** Signed member list (when newer than the peer's) */
   | { t: "membership"; signed: SignedMembership }
-  /** 공유 제안 (소유자 → 새 멤버): 멤버 목록 + 제목 + 문서 전체 상태 */
+  /** Share offer (owner → new member): member list + title + full document state */
   | { t: "offer"; signed: SignedMembership; title: string; color: NoteColor; state: string }
   | { t: "offer-reply"; noteId: string; accept: boolean }
-  /** 내 상태 벡터 → 상대는 내게 없는 차분을 sync-step2 로 보낸다 */
+  /** My state vector → the peer replies with the diff I lack via sync-step2 */
   | { t: "sync-step1"; noteId: string; sv: string }
   | { t: "sync-step2"; noteId: string; update: string }
-  /** 실시간 편집 */
+  /** Live edit */
   | { t: "update"; noteId: string; update: string }
-  /** 공유 나가기 알림 (멤버 → 소유자) */
+  /** Leaving the share (member → owner) */
   | { t: "leave"; noteId: string }
-  /** 커서·선택 영역 (y-protocols awareness 업데이트). 저장하지 않고 다른 멤버에게 전하지 않는다 */
+  /** Cursor and selection (y-protocols awareness update). Never stored or relayed to other members */
   | { t: "awareness"; noteId: string; update: string };
 
 export type ShareMessage = PairMessage | SyncMessage;
@@ -121,9 +121,9 @@ export function decodeMessage(data: Uint8Array): ShareMessage | null {
 }
 
 const MAX_HELLO_SHARES = 500;
-/** Rust 계층의 프레임 상한(4MB)보다 작다 */
+/** Below the Rust layer's frame limit (4 MB) */
 const MAX_DATA = 4 * 1024 * 1024;
-/** 커서 상태는 작다. 큰 데이터로 창들을 바쁘게 만들지 못하게 따로 제한한다 */
+/** Cursor state is small. Limited separately so large data can't keep the windows busy */
 const MAX_AWARENESS = 16 * 1024;
 
 const isData = (value: unknown, max = MAX_DATA): value is string =>

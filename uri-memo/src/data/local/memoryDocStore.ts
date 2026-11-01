@@ -7,7 +7,7 @@ interface Entry {
   updates: Uint8Array[];
 }
 
-/** 테스트와 브라우저 미리보기용. localStorage 키를 주면 새로고침 후에도 유지된다. */
+/** For tests and the browser preview. With a localStorage key it survives reloads. */
 export class MemoryDocStore implements DocStore {
   private docs = new Map<string, Entry>();
 
@@ -28,7 +28,7 @@ export class MemoryDocStore implements DocStore {
     return entry.snapshot ? [entry.snapshot, ...entry.updates] : [...entry.updates];
   }
 
-  /** 메모리 저장소는 업로드하지 않으므로 출처(origin)를 구분하지 않는다 */
+  /** The in-memory store never uploads, so it ignores the origin */
   async append(noteId: string, update: Uint8Array, _origin?: DocUpdateOrigin): Promise<void> {
     const entry = this.docs.get(noteId) ?? { snapshot: null, updates: [] };
     entry.updates.push(update);

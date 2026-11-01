@@ -5,7 +5,7 @@ import { useNotes } from "./notesStore";
 
 type Editing = { mode: "create" } | { mode: "rename"; id: string } | null;
 
-/** 목록 위 폴더 고르기·만들기·이름 바꾸기·삭제 (휴지통 보기에서는 숨김) */
+/** Pick, create, rename and delete folders above the list (hidden in the trash view) */
 export function FolderBar() {
   const t = useT();
   const folders = useNotes((s) => s.folders);

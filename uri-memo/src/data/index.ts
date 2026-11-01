@@ -12,14 +12,14 @@ export interface Stores {
   notes: NoteRepository;
   docs: DocStore;
   folders: FolderRepository;
-  /** 친구 공유는 Tauri 앱에서만 (브라우저 미리보기에는 없음) */
+  /** Friend sharing exists only in the Tauri app (not in the browser preview) */
   contacts: ContactsRepository | null;
   shares: SharesRepository | null;
 }
 
 let stores: Promise<Stores> | null = null;
 
-/** Tauri 앱에서는 SQLite, 브라우저 미리보기에서는 localStorage 기반 저장소를 쓴다. 창마다 한 번만 연다. */
+/** SQLite in the Tauri app, localStorage-backed stores in the browser preview. Opened once per window. */
 export function openStores(): Promise<Stores> {
   stores ??= (async () => {
     if (isTauri()) {

@@ -8,7 +8,7 @@
   --danger: #d1453b;
   --radius: 10px;
 
-  /* 메모 색상: 배경 / 강조(띠·선택) */
+  /* Note colors: background / accent (stripe, selection) */
   --note-yellow: #fff6c2;
   --note-yellow-accent: #f2c500;
   --note-green: #dff5d0;
@@ -42,7 +42,7 @@
   -webkit-text-size-adjust: 100%;
 }
 
-/* 테마는 설정(시스템/라이트/다크)에 따라 settingsStore 가 data-theme 을 붙인다 */
+/* settingsStore sets data-theme from the theme setting (system / light / dark) */
 :root[data-theme="dark"] {
   --bg: #1c1c1e;
   --surface: #252527;
@@ -86,7 +86,7 @@ input:focus-visible {
   outline-offset: 2px;
 }
 
-/* ---------- 메모 색상 ---------- */
+/* ---------- Note colors ---------- */
 .color-yellow {
   --note-bg: var(--note-yellow);
   --note-accent: var(--note-yellow-accent);
@@ -117,7 +117,7 @@ input:focus-visible {
   --note-text: var(--note-charcoal-text);
 }
 
-/* ---------- 레이아웃 ---------- */
+/* ---------- Layout ---------- */
 .app {
   display: grid;
   grid-template-columns: minmax(260px, 320px) 1fr;
@@ -138,7 +138,7 @@ input:focus-visible {
   font-size: 12px;
 }
 
-/* ---------- 사이드바 ---------- */
+/* ---------- Sidebar ---------- */
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -206,7 +206,7 @@ input:focus-visible {
   font-weight: 600;
 }
 
-/* ---------- 메모 목록 ---------- */
+/* ---------- Note list ---------- */
 .note-list {
   flex: 1;
   margin: 0;
@@ -282,7 +282,7 @@ input:focus-visible {
   opacity: 0.6;
 }
 
-/* ---------- 편집 패널 ---------- */
+/* ---------- Editor pane ---------- */
 .editor-pane {
   display: flex;
   flex-direction: column;
@@ -387,7 +387,7 @@ input:focus-visible {
     0 0 0 4px var(--note-accent);
 }
 
-/* ---------- 편집기 ---------- */
+/* ---------- Editor ---------- */
 .note-editor {
   display: flex;
   flex: 1;
@@ -481,7 +481,7 @@ input:focus-visible {
   text-decoration: line-through;
 }
 
-/* ---------- 모바일 (1단) ---------- */
+/* ---------- Mobile (single pane) ---------- */
 @media (max-width: 719px) {
   .app {
     grid-template-columns: 1fr;
@@ -516,7 +516,7 @@ input:focus-visible {
   }
 }
 
-/* ---------- 폴더 ---------- */
+/* ---------- Folders ---------- */
 .sidebar-header {
   gap: 4px;
 }
@@ -564,7 +564,7 @@ input:focus-visible {
   flex: none;
 }
 
-/* 폴더 막대는 가로 스크롤되므로 메뉴는 화면 기준으로 띄운다 */
+/* The folder bar scrolls horizontally, so the menu is positioned relative to the viewport */
 .folder-menu {
   position: fixed;
   z-index: 50;
@@ -620,7 +620,7 @@ input:focus-visible {
   color: var(--text-muted);
 }
 
-/* ---------- 새 버전 알림 ---------- */
+/* ---------- New version banner ---------- */
 .update-banner {
   display: flex;
   align-items: center;

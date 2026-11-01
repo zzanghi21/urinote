@@ -133,7 +133,7 @@ html.sticky-mode #root {
   font-size: calc(15px * var(--font-scale, 1));
 }
 
-/* 서식 도구모음은 메모를 편집할 때만 보인다 */
+/* The formatting toolbar shows only while editing the note */
 .sticky .toolbar {
   display: none;
   padding: 2px 8px;

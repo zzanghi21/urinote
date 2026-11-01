@@ -13,14 +13,14 @@ interface Props {
   onChange(remindAt: number | null): void;
 }
 
-/** 편집기 머리글의 ⏰ 버튼 + 알림 시각 고르기 */
+/** ⏰ button in the editor header + reminder time picker */
 export function ReminderButton({ value, onChange }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLSpanElement>(null);
   const label = value ? t("알림: {time}", { time: formatReminder(value) }) : t("알림 설정");
 
-  // 바깥을 누르거나 Esc 를 누르면 닫는다
+  // close on outside click or Esc
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
@@ -62,7 +62,7 @@ export function ReminderButton({ value, onChange }: Props) {
   );
 }
 
-/** 빠른 선택 + 날짜·시각 직접 입력 + 해제. 스티키 메뉴에서는 이것만 쓴다 */
+/** Presets + date/time input + remove. The sticky menu uses only this part */
 export function ReminderFields({ value, onChange }: Props) {
   const t = useT();
   const [now] = useState(() => Date.now());

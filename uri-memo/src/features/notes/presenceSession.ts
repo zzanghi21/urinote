@@ -12,7 +12,7 @@ import * as p2p from "../../platform/p2p";
 import { presenceColor, type PresenceUser } from "../share/presence";
 import { DEVICE_ID_KEY, DEVICE_NAME_KEY } from "../share/viewOnly";
 
-/** 커서를 움직일 때마다 보내지 않도록 모아서 보낸다 */
+/** Batches cursor moves instead of sending each one */
 const SEND_THROTTLE_MS = 80;
 
 export interface PresenceHandle {
@@ -22,8 +22,8 @@ export interface PresenceHandle {
 }
 
 /**
- * 공유 메모 편집기용 Awareness 를 연다. 내 커서는 Hub 를 거쳐 친구에게 가고,
- * 친구 커서는 Hub 가 검사한 것만 받는다.
+ * Opens Awareness for a shared note's editor. My cursor goes to friends through the hub, and
+ * friends' cursors arrive only after the hub has checked them.
  */
 export async function openPresence(noteId: string, doc: Y.Doc): Promise<PresenceHandle> {
   const user = await myPresenceUser();
@@ -55,7 +55,7 @@ export async function openPresence(noteId: string, doc: Y.Doc): Promise<Presence
       awareness.off("update", onUpdate);
       offPeers();
       offRenew();
-      // 친구 화면에서 내 커서를 바로 지운다
+      // remove my cursor from friends' screens right away
       awareness.setLocalState(null);
       sendNow();
       awareness.destroy();
@@ -65,7 +65,7 @@ export async function openPresence(noteId: string, doc: Y.Doc): Promise<Presence
 
 let cachedUser: Promise<PresenceUser> | null = null;
 
-/** 내 표시 이름·색. 친구 화면에서는 각자의 친구 목록 이름으로 바뀌어 보인다 */
+/** My display name and color. Friends see the name from their own friend list instead */
 function myPresenceUser(): Promise<PresenceUser> {
   cachedUser ??= (async () => {
     const { contacts } = await openStores();

@@ -17,35 +17,35 @@ interface NotesState {
   selectedId: string | null;
   ready: boolean;
   folders: Folder[];
-  /** 목록에 보이는 폴더. null 이면 모든 폴더 */
+  /** Folder shown in the list. null means all folders */
   folderId: string | null;
 
-  /** selectFirst: 2단 화면(데스크톱)에서 첫 메모를 바로 연다 */
+  /** selectFirst: open the first note right away in the two-pane (desktop) layout */
   init(service: NoteService, folders: FolderService, selectFirst?: boolean): Promise<void>;
   setView(view: NoteView): Promise<void>;
   setFolder(folderId: string | null): Promise<void>;
-  /** 새 폴더를 만들고 그 폴더를 연다 */
+  /** Creates a folder and opens it */
   createFolder(name: string): Promise<void>;
   renameFolder(id: string, name: string): Promise<void>;
   moveToFolder(id: string, folderId: string | null): Promise<void>;
-  /** 알림 시각 설정 (null 이면 해제) */
+  /** Sets the reminder time (null clears it) */
   setReminder(id: string, remindAt: number | null): Promise<void>;
-  /** 폴더만 지운다 (메모는 "폴더 없음"으로) */
+  /** Deletes only the folder (its notes go to "no folder") */
   deleteFolder(id: string): Promise<void>;
-  /** 검색어는 바로 반영하고 목록 조회는 디바운스한다 */
+  /** Updates the query immediately and debounces the list query */
   setQuery(query: string): void;
   select(id: string | null): void;
   create(color?: NoteColor): Promise<void>;
-  /** Hub 선택은 그대로 두고 새 메모를 스티키 창으로 만든다 (트레이·전역 단축키) */
+  /** Creates a new note as a sticky window without changing the hub selection (tray, global shortcut) */
   createSticky(): Promise<void>;
   edit(id: string, edit: NoteEdit): Promise<void>;
   trash(id: string): Promise<void>;
   restore(id: string): Promise<void>;
   deleteForever(id: string): Promise<void>;
   refresh(): Promise<void>;
-  /** 다른 창(스티키)에서 메모 메타데이터·캐시가 바뀌었을 때. 본문은 docSession 이 실시간 병합한다. */
+  /** When note metadata/cache changed in another window (sticky). docSession merges bodies live. */
   onExternalChange(): Promise<void>;
-  /** 폴더·메모를 통째로 다시 읽는다 (가져오기 후) */
+  /** Reloads all folders and notes (after an import) */
   reloadAll(): Promise<void>;
 }
 
@@ -64,7 +64,7 @@ export const useNotes = create<NotesState>((set, get) => {
 
   const reloadFolders = async () => {
     const folders = (await folderService?.list()) ?? [];
-    // 보고 있던 폴더가 다른 창에서 지워졌으면 모든 폴더로
+    // if the folder being viewed was deleted elsewhere, show all folders
     const folderId = folders.some((f) => f.id === get().folderId) ? get().folderId : null;
     set({ folders, folderId });
   };
@@ -131,7 +131,7 @@ export const useNotes = create<NotesState>((set, get) => {
     async moveToFolder(id, folderId) {
       await service().edit(id, { folderId });
       emitNoteChanged(id);
-      // 보고 있던 폴더에서 빠지면 메모가 목록에서 사라지므로, 옮긴 폴더를 따라간다
+      // the note would vanish from the folder being viewed, so follow it to its new folder
       const viewing = get().folderId;
       if (viewing !== null && viewing !== folderId) set({ folderId });
       await get().refresh();
@@ -156,7 +156,7 @@ export const useNotes = create<NotesState>((set, get) => {
 
     async create(color) {
       leaveSelected();
-      // 폴더를 보고 있으면 그 폴더에 만든다
+      // create it in the folder being viewed
       const note = await service().create(color ?? currentSettings().defaultColor, get().folderId);
       emitNoteChanged(note.id);
       window.clearTimeout(searchTimer);
@@ -207,8 +207,8 @@ export const useNotes = create<NotesState>((set, get) => {
   };
 
   /**
-   * 선택 중인 메모를 떠날 때: 저장 대기 중인 입력을 먼저 저장하고, 비어 있으면 지운다.
-   * 스티키 창으로 열려 있는 메모는 그 창에서 쓰는 중일 수 있으므로 지우지 않는다.
+   * When leaving the selected note: save pending input first, then delete it if empty.
+   * Notes open as sticky windows may be in use there, so they are not deleted.
    */
   function leaveSelected() {
     const id = get().selectedId;
@@ -223,7 +223,7 @@ export const useNotes = create<NotesState>((set, get) => {
     })();
   }
 
-  /** 현재 목록에서 사라진 메모 대신 바로 아래(없으면 위) 메모를 선택한다 */
+  /** Selects the note below (or above) the one that left the list */
   async function afterRemoval(id: string) {
     const before = get().notes;
     const index = before.findIndex((n) => n.id === id);

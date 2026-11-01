@@ -29,7 +29,7 @@ type WindowPatch = Partial<Omit<StickyWindowState, "noteId">>;
 const appWindow = getCurrentWindow();
 const stickyRepo = () => StickyWindowRepository.open();
 
-/** 바탕화면에 붙는 메모 1개 = 창 1개 */
+/** One note pinned to the desktop = one window */
 export function StickyApp({ noteId }: { noteId: string }) {
   const t = useT();
   const [service, setService] = useState<NoteService | null>(null);
@@ -64,7 +64,7 @@ export function StickyApp({ noteId }: { noteId: string }) {
     })();
   }, [noteId]);
 
-  // 닫을 때: 입력 저장 → 다음 실행 때 복원하지 않도록 표시 → 빈 메모면 삭제
+  // on close: save input → mark it not to restore next time → delete if empty
   useEffect(() => {
     const unlisten = appWindow.onCloseRequested(async () => {
       flushPendingEdit();
@@ -75,7 +75,7 @@ export function StickyApp({ noteId }: { noteId: string }) {
     return () => void unlisten.then((fn) => fn());
   }, [noteId, service]);
 
-  // 위치·크기 기억 (접힌 상태의 높이는 저장하지 않는다)
+  // remember position and size (the collapsed height is not saved)
   useEffect(() => {
     let timer: number | undefined;
     const save = () => {
@@ -97,10 +97,10 @@ export function StickyApp({ noteId }: { noteId: string }) {
       window.clearTimeout(timer);
       unlisteners.forEach((p) => void p.then((fn) => fn()));
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- updateWindow 는 noteId 에만 의존
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- updateWindow depends only on noteId
   }, [noteId]);
 
-  // Hub 나 다른 창에서 바뀐 색상 등 반영 (본문은 docSession 이 실시간 병합). 휴지통으로 가면 창을 닫는다.
+  // apply color etc. changed in the hub or other windows (docSession merges the body live); close the window if the note was trashed
   useEffect(() => {
     if (!service) return;
     return onNoteChangedElsewhere(async (id) => {
@@ -112,7 +112,7 @@ export function StickyApp({ noteId }: { noteId: string }) {
       }
       setNote(latest);
       const next = await shareAccess(await openStores(), noteId);
-      // 같은 값이면 상태를 그대로 두어 편집기를 다시 만들지 않는다
+      // keep the same state object for equal values so the editor isn't recreated
       setAccess((prev) =>
         prev.shared === next.shared && prev.viewOnly === next.viewOnly ? prev : next,
       );
@@ -267,7 +267,7 @@ export function StickyApp({ noteId }: { noteId: string }) {
             className="sticky-resize"
             onMouseDown={(e) => {
               e.preventDefault();
-              // 창 가장자리로 크기를 바꾸는 플랫폼(macOS 등)에서는 지원하지 않아 실패할 수 있다
+              // fails on platforms that resize from window edges instead (e.g. macOS)
               appWindow.startResizeDragging("SouthEast").catch(() => {});
             }}
             aria-hidden

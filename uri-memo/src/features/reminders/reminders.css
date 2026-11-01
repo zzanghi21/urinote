@@ -67,7 +67,7 @@
   justify-self: start;
 }
 
-/* 놓친 알림 (Hub 목록 위) */
+/* Missed reminders (above the hub list) */
 .missed-banner {
   display: grid;
   gap: 6px;

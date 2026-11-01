@@ -3,25 +3,26 @@ import { fromBase64, toBase64 } from "../../domain/noteDoc";
 import type { PairMessage } from "./protocol";
 
 /**
- * 친구 등록 (DESIGN.md 4.9.3) — 블루투스 "숫자 비교" 방식의 커밋-공개.
+ * Adding a friend (DESIGN.md 4.9.3) — commit-then-reveal, like Bluetooth "numeric comparison".
  *
- * 1. 요청한 쪽 A: 임의값 nA 를 만들고 H(nA) 를 담아 pair-request
- * 2. 받는 쪽 B: 사용자가 수락하면 H(nB) 를 담아 pair-accept, 이어서 nB 공개
- * 3. A: B 의 커밋을 받았으므로 nA 공개
- * 4. 양쪽: 상대 공개값이 커밋과 맞는지 확인 → 코드 = H(작은ID, 큰ID, n작은ID, n큰ID) 의 6자리
- * 5. 두 사람이 화면의 코드가 같은지 확인하고 [예] → 양쪽 모두 예면 친구로 저장
+ * 1. Requester A: picks a random nA and sends pair-request with H(nA)
+ * 2. Receiver B: when the user accepts, sends pair-accept with H(nB), then reveals nB
+ * 3. A: has B's commitment, so reveals nA
+ * 4. Both: check the revealed value matches the commitment → code = 6 digits of
+ *    H(smallerID, largerID, n_smallerID, n_largerID)
+ * 5. Both people check the codes match and press [Yes] → saved as friends when both said yes
  *
- * 각자 상대의 커밋을 받은 뒤에만 자기 임의값을 공개하므로, 중간자가 임의값을 골라
- * 양쪽 코드를 같게 만들 수 없다 (성공 확률 100만 분의 1).
- * 상대 기기 ID 는 P2P 계층이 TLS 로 확인한 값이다.
+ * Each side reveals its random value only after receiving the other's commitment, so a man in the
+ * middle cannot pick values that make both codes match (1 in a million chance).
+ * The peer's device ID is verified by TLS in the P2P layer.
  */
 
 export type PairingPhase =
-  | "requesting" // 요청을 보내고 상대의 수락을 기다림
-  | "incoming" // 요청을 받음, 내 수락을 기다림
-  | "exchanging" // 임의값 교환 중
-  | "confirm" // 코드 표시, 내 확인을 기다림
-  | "waiting-peer" // 나는 확인함, 상대 확인을 기다림
+  | "requesting" // request sent, waiting for the other side to accept
+  | "incoming" // request received, waiting for me to accept
+  | "exchanging" // exchanging random values
+  | "confirm" // showing the code, waiting for my confirmation
+  | "waiting-peer" // I confirmed, waiting for the other side
   | "done"
   | "failed";
 
@@ -63,7 +64,7 @@ async function sha256(...parts: Uint8Array[]): Promise<Uint8Array> {
 const sameBytes = (a: Uint8Array, b: Uint8Array) =>
   a.length === b.length && a.every((value, i) => value === b[i]);
 
-/** 두 기기가 같은 순서로 계산하도록 기기 ID 로 정렬한다 */
+/** Sorts by device ID so both devices compute in the same order */
 export async function pairingCode(
   idA: string,
   nonceA: Uint8Array,
@@ -113,7 +114,7 @@ export class PairingSession {
   }
 
   /**
-   * 내가 보낼 친구 요청. 상대 응답을 놓치지 않도록 세션을 먼저 등록한 뒤 `begin()` 으로 보낸다.
+   * A friend request I send. Register the session first, then send it with `begin()`, so no reply is missed.
    */
   static outgoing(deps: PairingDeps, peerId: string, peerName: string) {
     return new PairingSession(deps, peerId, peerName, "initiator");
@@ -126,7 +127,7 @@ export class PairingSession {
     await this.sendOrFail({ t: "pair-request", name: this.deps.myName, commit });
   }
 
-  /** 상대의 친구 요청을 받았다 */
+  /** Received a friend request */
   static fromRequest(
     deps: PairingDeps,
     peerId: string,
@@ -153,18 +154,18 @@ export class PairingSession {
     return this.phase === "done" || this.phase === "failed";
   }
 
-  /** 받는 쪽: 요청 수락 */
+  /** Receiver: accept the request */
   async accept() {
     if (this.phase !== "incoming") return;
     this.phase = "exchanging";
     const commit = await this.makeCommit();
     this.notify();
     await this.sendOrFail({ t: "pair-accept", name: this.deps.myName, commit });
-    // 상대의 커밋은 요청에서 이미 받았으므로 바로 공개해도 된다
+    // the other side's commitment came with the request, so revealing right away is safe
     await this.sendOrFail({ t: "pair-reveal", nonce: toBase64(this.ownNonce!) });
   }
 
-  /** 두 화면의 코드가 같은지에 대한 사용자 응답 */
+  /** The user's answer to whether both screens show the same code */
   async confirm(same: boolean) {
     if (this.phase !== "confirm") return;
     if (!same) {
@@ -227,7 +228,7 @@ export class PairingSession {
     return toBase64(await sha256(this.ownNonce));
   }
 
-  /** 내 임의값을 공개했고 상대 임의값도 확인했으면 코드를 만든다 */
+  /** Computes the code once my value is revealed and the other side's value is verified */
   private async tryComputeCode() {
     if (this.code || !this.ownNonce || !this.peerNonce || this.phase !== "exchanging") return;
     this.code = await pairingCode(this.deps.myId, this.ownNonce, this.peerId, this.peerNonce);

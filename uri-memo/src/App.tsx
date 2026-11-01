@@ -18,7 +18,7 @@ import { updateTrayLabels } from "./platform/tray";
 import { useLocale, useT } from "./i18n";
 import "./App.css";
 
-/** App.css 의 2단 레이아웃 기준과 같아야 한다 */
+/** Must match the two-pane breakpoint in App.css */
 const TWO_PANE_QUERY = "(min-width: 720px)";
 const COMPACT_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -50,7 +50,7 @@ function App() {
     void useShare.getState().init();
   }, []);
 
-  // 스티키 창의 변경 반영, 트레이·전역 단축키의 "새 메모"
+  // Apply changes from sticky windows; "new note" from the tray and global shortcut
   useEffect(() => {
     if (!ready) return;
     const unlistenChange = onNoteChangedElsewhere(
@@ -60,9 +60,9 @@ function App() {
       "app://new-sticky",
       () => void useNotes.getState().createSticky(),
     );
-    // 새 버전 확인 (Hub 창에서만)
+    // Check for new versions (hub window only)
     useUpdate.getState().init();
-    // 문서 업데이트 로그 압축은 Hub 창 한 곳에서만 한다
+    // Only the hub window compacts document update logs
     const compactTimer = window.setInterval(
       () => void useNotes.getState().service?.compactDocs(),
       COMPACT_INTERVAL_MS,
@@ -74,7 +74,7 @@ function App() {
     };
   }, [ready]);
 
-  // 트레이 메뉴도 앱 언어를 따른다
+  // The tray menu follows the app language too
   const locale = useLocale();
   useEffect(() => {
     void updateTrayLabels().catch(console.error);

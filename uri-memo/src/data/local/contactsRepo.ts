@@ -1,6 +1,6 @@
 import type Database from "@tauri-apps/plugin-sql";
 
-/** 확인 코드로 등록한 친구 기기 (기기 안에만 저장) */
+/** Friend devices added with a confirmation code (stored on this device only) */
 export interface Contact {
   deviceId: string;
   name: string;
@@ -61,7 +61,7 @@ export class SqliteContactsRepository implements ContactsRepository {
     await this.db.execute("DELETE FROM contacts WHERE device_id = $1", [deviceId]);
   }
 
-  /** 기기 이름 같은 작은 설정은 sync_state(키-값) 테이블에 둔다 */
+  /** Small settings such as the device name live in the sync_state (key-value) table */
   async getSetting(key: string) {
     const rows = await this.db.select<{ value: string }[]>(
       "SELECT value FROM sync_state WHERE key = $1",

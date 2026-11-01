@@ -25,8 +25,8 @@ import { ShareEngine, type Invitee } from "./shareEngine";
 import { DEVICE_ID_KEY, DEVICE_NAME_KEY } from "./viewOnly";
 
 /**
- * 친구 공유 (Hub 창 전용): P2P 시작, 근처 기기, 친구 등록·관리(S2), 메모 공유·동기화(S3),
- * 함께 편집 중인 친구의 커서 표시(S4).
+ * Friend sharing (hub window only): starting P2P, nearby devices, adding/managing friends (S2),
+ * sharing and syncing notes (S3), and showing cursors of friends editing together (S4).
  */
 
 const CONNECT_CODE_PREFIX = "URINOTE-";
@@ -37,7 +37,7 @@ export interface NearbyPeer {
 }
 
 interface ShareState {
-  /** 데스크톱 앱에서만 true */
+  /** true only in the desktop app */
   available: boolean;
   started: boolean;
   error: string | null;
@@ -45,18 +45,18 @@ interface ShareState {
   deviceName: string;
   contacts: Contact[];
   connected: string[];
-  /** 친구 추가 화면을 연 근처 기기 (표시 이름을 광고 중인 기기) */
+  /** Nearby devices with Add a friend open (advertising a display name) */
   nearby: Record<string, NearbyPeer>;
   dialogOpen: boolean;
   pairing: PairingView | null;
-  /** 공유 중이거나 공유했던 메모 (noteId → 기록) */
+  /** Notes shared now or before (noteId → record) */
   shares: Record<string, ShareRecord>;
-  /** 받은 공유 제안 */
+  /** Received share offers */
   inbox: IncomingOffer[];
-  /** 공유 설정 창이 열린 메모 */
+  /** Note whose share dialog is open */
   shareDialogNoteId: string | null;
 
-  /** 앱 시작 시: 친구가 있으면 P2P 를 바로 켜서 친구 기기와 자동 연결 */
+  /** At startup: if there are friends, start P2P right away and connect to their devices */
   init(): Promise<void>;
   openDialog(): Promise<void>;
   closeDialog(): Promise<void>;
@@ -77,7 +77,7 @@ interface ShareState {
   setMembers(noteId: string, members: Member[]): Promise<void>;
   endShare(noteId: string): Promise<void>;
   leaveShare(noteId: string): Promise<void>;
-  /** 공유 메모를 영구 삭제하기 전: 소유자는 공유 종료, 멤버는 나가기 (DESIGN.md 4.9.7) */
+  /** Before deleting a shared note forever: the owner ends sharing, members leave (DESIGN.md 4.9.7) */
   beforeDeleteForever(noteId: string): Promise<void>;
   acceptOffer(noteId: string): Promise<void>;
   declineOffer(noteId: string): Promise<void>;
@@ -97,7 +97,7 @@ export const useShare = create<ShareState>((set, get) => {
   let starting: Promise<void> | null = null;
   let engine: ShareEngine | null = null;
   let presence: PresenceHub | null = null;
-  /** 엔진 작업은 도착 순서대로 하나씩 처리한다 (멤버 목록 갱신 → 동기화 요청 순서 보장) */
+  /** Engine work runs one at a time in arrival order (member-list updates before sync requests) */
   let engineQueue: Promise<unknown> = Promise.resolve();
   const runEngine = (task: (e: ShareEngine) => Promise<unknown>) => {
     const result = engineQueue.then(() => (engine ? task(engine) : undefined));
@@ -145,7 +145,7 @@ export const useShare = create<ShareState>((set, get) => {
             nearby: { ...s.nearby, [event.peer.id]: { id: event.peer.id, name: event.peer.name! } },
           }));
         } else if (get().nearby[event.peer.id]) {
-          // 상대가 친구 추가 화면을 닫았다
+          // the other side closed Add a friend
           set((s) => {
             const nearby = { ...s.nearby };
             delete nearby[event.peer.id];
@@ -164,7 +164,7 @@ export const useShare = create<ShareState>((set, get) => {
         set((s) => ({ connected: [...new Set([...s.connected, event.peer.id])] }));
         void repo?.touch(event.peer.id, Date.now());
         void runEngine((e) => e.onConnected(event.peer.id));
-        // 새로 연결된 친구에게 내 창들의 커서를 보낸다
+        // send my windows' cursors to the newly connected friend
         emitAwarenessRenew();
         return;
       case "disconnected":
@@ -182,7 +182,7 @@ export const useShare = create<ShareState>((set, get) => {
 
   const onMessage = async (from: string, data: Uint8Array) => {
     const message = decodeMessage(data);
-    if (!message) return; // 형식이 맞지 않는 데이터는 버린다
+    if (!message) return; // drop malformed data
     if (message.t === "pair-request") {
       if (!get().dialogOpen) {
         await send(from, { t: "pair-cancel", reason: "상대가 친구 추가 화면을 닫았습니다" });
@@ -199,7 +199,7 @@ export const useShare = create<ShareState>((set, get) => {
       if (session?.peerId === from) await session.handle(message as PairMessage);
       return;
     }
-    // 친구 추가 화면이 열려 있으면 친구가 아닌 기기도 연결될 수 있다. 공유 메시지는 친구에게서만 받는다
+    // non-friend devices can connect while Add a friend is open; accept share messages only from friends
     if (!get().contacts.some((c) => c.deviceId === from)) return;
     if (message.t === "awareness") {
       await presence
@@ -227,7 +227,7 @@ export const useShare = create<ShareState>((set, get) => {
       };
     });
     set({ shares: Object.fromEntries(records.map((r) => [r.noteId, r])), inbox });
-    // 권한이 바뀌었을 수 있으니 스티키 창들이 다시 읽게 한다
+    // permissions may have changed, so make sticky windows reload
     for (const r of records) emitNoteChanged(r.noteId);
   };
 
@@ -266,12 +266,12 @@ export const useShare = create<ShareState>((set, get) => {
         await onAwarenessQuery((noteId) => hub.query(noteId));
       }
       await p2p.onP2pEvent(onEvent);
-      // 내 창들(Hub·스티키)에서 생긴 편집을 친구 기기로 보낸다. 친구에게서 받은 것(p2p)은 제외
+      // send edits from my windows (hub and stickies) to friend devices, except those received from friends (p2p)
       await onAnyDocUpdate((noteId, update, source) => {
         if (source !== P2P_SOURCE)
           void runEngine((e) => e.onLocalUpdate(noteId, fromBase64(update)));
       });
-      // 스티키 창이 보기 전용 여부를 판단할 수 있도록 내 기기 ID 를 남긴다
+      // store my device ID so sticky windows can tell whether they are view-only
       await repo?.setSetting(DEVICE_ID_KEY, myId);
       set({ myId, started: true, connected: await p2p.connectedPeers() });
       for (const peer of get().connected) void runEngine((e) => e.onConnected(peer));
@@ -305,7 +305,7 @@ export const useShare = create<ShareState>((set, get) => {
         set({ deviceName: name });
         await reloadContacts();
         await reloadShares();
-        // 친구가 없는 동안에는 P2P 를 켜지 않는다 (방화벽 확인 창도 친구 추가를 처음 열 때 뜬다)
+        // don't start P2P while there are no friends (the firewall prompt appears when Add a friend is first opened)
         if (get().contacts.length > 0) await start();
       } catch (e) {
         setError(e);
@@ -467,5 +467,5 @@ export const useShare = create<ShareState>((set, get) => {
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-/** 기기 ID 를 사람이 비교하기 쉽게 앞 8자리만 4자씩 끊어 보여 준다 */
+/** Shows the first 8 characters of a device ID in groups of 4, for easy comparison */
 export const shortDeviceId = (id: string) => `${id.slice(0, 4)} ${id.slice(4, 8)}`.toUpperCase();

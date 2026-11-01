@@ -27,14 +27,14 @@ const FONT_LABEL: Record<FontSize, string> = {
   xlarge: "아주 크게",
 };
 
-/** 언어 이름은 그 언어로 쓴다 (번역하지 않음) */
+/** Language names are written in their own language (not translated) */
 const LANGUAGE_LABEL: Record<Language, string> = {
   system: "시스템 설정",
   ko: "한국어",
   en: "English",
 };
 
-/** 설정 (E-01). 바꾸는 즉시 저장되고 모든 창에 반영된다 */
+/** Settings (E-01). Saved immediately and applied to every window */
 export function SettingsDialog() {
   const t = useT();
   const open = useSettings((s) => s.dialogOpen);
@@ -106,7 +106,7 @@ export function SettingsDialog() {
   }
 }
 
-/** JSON 내보내기·가져오기 (E-02) */
+/** JSON export / import (E-02) */
 function BackupSection() {
   const t = useT();
   const [busy, setBusy] = useState(false);

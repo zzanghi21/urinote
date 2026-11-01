@@ -37,7 +37,7 @@ const legacyJson = JSON.stringify({
   ],
 });
 
-/** 문서 맨 앞 문단 끝에 텍스트를 붙인다 (편집기 없이 사용자 입력을 흉내 낸다) */
+/** Appends text to the first paragraph (simulates typing without an editor) */
 function appendToFirstParagraph(doc: Y.Doc, text: string) {
   const paragraph = doc.getXmlFragment(DOC_FIELD).get(0) as Y.XmlElement;
   const xmlText = paragraph.get(0) as Y.XmlText;
@@ -76,7 +76,7 @@ describe("noteDoc", () => {
 
     const fromA = Y.encodeStateAsUpdate(a);
     const fromB = Y.encodeStateAsUpdate(b);
-    // 순서를 바꿔 적용하고, 중복으로 한 번 더 적용해도 결과가 같아야 한다
+    // applying in a different order, and once more as a duplicate, must give the same result
     Y.applyUpdate(a, fromB);
     Y.applyUpdate(b, fromA);
     Y.applyUpdate(b, fromA);

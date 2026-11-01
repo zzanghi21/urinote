@@ -1,4 +1,4 @@
-/* 함께 편집 중인 친구의 커서 (CollaborationCaret). Hub·스티키 창 공통 */
+/* Cursors of friends editing together (CollaborationCaret). Shared by hub and sticky windows */
 .collab-caret {
   position: relative;
   margin: 0 -1px;

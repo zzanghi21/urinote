@@ -218,7 +218,7 @@
   margin-top: 12px;
 }
 
-/* 받은 공유 제안 (Hub 목록 위) */
+/* Received share offers (above the hub list) */
 .offer-banner {
   display: grid;
   gap: 6px;
@@ -240,7 +240,7 @@
   min-width: 0;
 }
 
-/* 공유가 끝났거나 내보내진 메모 안내 (편집기 위) */
+/* Notice for notes whose sharing ended or that I was removed from (above the editor) */
 .share-notice {
   display: flex;
   align-items: center;
@@ -260,7 +260,7 @@
   font-size: 12px;
 }
 
-/* 친구 버튼의 연결 상태 점 */
+/* Connection status dot on the friends button */
 .friends-btn {
   position: relative;
 }
@@ -284,7 +284,7 @@
   background: var(--danger);
 }
 
-/* 편집기 머리글: 지금 연결된 멤버 */
+/* Editor header: members connected now */
 .presence-avatars {
   display: flex;
 }

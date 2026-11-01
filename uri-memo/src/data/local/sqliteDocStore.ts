@@ -34,9 +34,10 @@ export class SqliteDocStore implements DocStore {
   }
 
   /**
-   * 스냅샷을 먼저 쓰고 합친 로그를 지운다. 중간에 앱이 꺼져도 같은 업데이트가 스냅샷과 로그에
-   * 함께 남을 뿐이고, Yjs 업데이트는 중복 적용해도 결과가 같으므로 안전하다.
-   * 압축 중에 다른 창이 추가한 업데이트는 seq 가 더 크므로 지워지지 않는다.
+   * Writes the snapshot first, then deletes the merged log. If the app stops in between, the same
+   * updates just exist in both the snapshot and the log, which is safe because applying a Yjs update
+   * twice gives the same result. Updates added by other windows during compaction have a higher seq
+   * and are not deleted.
    */
   async compact(threshold: number): Promise<number> {
     const candidates = await this.db.select<{ note_id: string }[]>(

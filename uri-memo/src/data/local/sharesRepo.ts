@@ -24,7 +24,7 @@ export interface InboxItem {
   receivedAt: number;
 }
 
-/** 공유 메모·받은 제안·보낼 메시지 (기기 안에만 저장) */
+/** Shared notes, received offers and outgoing messages (stored on this device only) */
 export interface SharesRepository {
   get(noteId: string): Promise<ShareRecord | null>;
   list(): Promise<ShareRecord[]>;
@@ -38,7 +38,7 @@ export interface SharesRepository {
   outboxFor(deviceId: string): Promise<OutboxItem[]>;
   enqueue(item: Omit<OutboxItem, "id">): Promise<void>;
   dequeue(id: number): Promise<void>;
-  /** 같은 메모·기기·종류의 대기 메시지를 지운다 (예: 제안을 보내기 전에 멤버에서 빠진 경우) */
+  /** Drops queued messages of the same note, device and kind (e.g. removed from the members before the offer was sent) */
   dropQueued(deviceId: string, noteId: string, kind: OutboxItem["kind"]): Promise<void>;
 }
 
@@ -150,7 +150,7 @@ export class SqliteSharesRepository implements SharesRepository {
   }
 }
 
-/** 테스트용 */
+/** For tests */
 export class MemorySharesRepository implements SharesRepository {
   private shares = new Map<string, ShareRecord>();
   private inboxItems = new Map<string, InboxItem>();

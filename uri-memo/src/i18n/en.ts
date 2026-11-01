@@ -1,15 +1,15 @@
 import type { Translation, Vars } from "./index";
 
-/** 1개면 단수, 아니면 복수 */
+/** Singular for 1, plural otherwise */
 const plural = (key: string, one: string, many: string) => (v: Vars) =>
   (v[key] === 1 ? one : many).replace(`{${key}}`, String(v[key]));
 
 /**
- * 영어 번역. 키는 소스에 쓴 한국어 문구 그대로.
- * 빠진 문구·자리 표시({name}) 불일치는 i18n.test.ts 가 찾아낸다.
+ * English translations, keyed by the Korean text as written in the source.
+ * tests/i18n.test.ts catches missing entries and mismatched placeholders ({name}).
  */
 export const en: Record<string, Translation> = {
-  // 앱 공통
+  // common
   "저장소를 열지 못했습니다.": "Could not open the note storage.",
   "불러오는 중…": "Loading…",
   설정: "Settings",
@@ -23,7 +23,7 @@ export const en: Record<string, Translation> = {
   만들기: "Create",
   "오류: {message}": "Error: {message}",
 
-  // 메모 색상
+  // note colors
   "메모 색상": "Note color",
   노랑: "Yellow",
   초록: "Green",
@@ -33,7 +33,7 @@ export const en: Record<string, Translation> = {
   회색: "Gray",
   차콜: "Charcoal",
 
-  // 목록·사이드바
+  // list and sidebar
   "새 메모": "New note",
   "새 메모 ({key})": "New note ({key})",
   "메모 검색 ({key})": "Search notes ({key})",
@@ -55,7 +55,7 @@ export const en: Record<string, Translation> = {
   고정됨: "Pinned",
   어제: "Yesterday",
 
-  // 폴더
+  // folders
   폴더: "Folder",
   "폴더 없음": "No folder",
   "폴더 이름": "Folder name",
@@ -69,7 +69,7 @@ export const en: Record<string, Translation> = {
   "새 폴더": "New folder",
   "+ 폴더": "+ Folder",
 
-  // 편집기
+  // editor
   "메모를 선택하거나 새로 만드세요.": "Select a note or create a new one.",
   "메모 편집": "Edit note",
   목록으로: "Back to list",
@@ -94,7 +94,7 @@ export const en: Record<string, Translation> = {
   체크리스트: "Checklist",
   서식: "Formatting",
 
-  // 스티키 창
+  // sticky window
   메뉴: "Menu",
   "닫기 (메모는 목록에 남습니다)": "Close (the note stays in the list)",
   "항상 위": "Always on top",
@@ -104,7 +104,7 @@ export const en: Record<string, Translation> = {
   "메모 목록 열기": "Open note list",
   "Urinote 메모": "Urinote note",
 
-  // 알림
+  // reminders
   알림: "Reminder",
   "알림: {time}": "Reminder: {time}",
   "알림 설정": "Set reminder",
@@ -125,7 +125,7 @@ export const en: Record<string, Translation> = {
   "{month} {day}일 ({weekday}) {time}": "{weekday}, {month} {day} {time}",
   "{year}년 {month} {day}일 ({weekday}) {time}": "{weekday}, {month} {day}, {year} {time}",
 
-  // 설정·백업
+  // settings and backup
   언어: "Language",
   "시스템 설정": "System",
   한국어: "한국어",
@@ -157,7 +157,7 @@ export const en: Record<string, Translation> = {
     "This backup format cannot be read by this version of Urinote",
   "백업 파일이 손상되었습니다 ({where})": "The backup file is damaged ({where})",
 
-  // 업데이트
+  // updates
   "새 버전 {version}이 있습니다": "Version {version} is available",
   나중에: "Later",
   "설치하고 다시 시작": "Install and restart",
@@ -165,13 +165,13 @@ export const en: Record<string, Translation> = {
   "업데이트를 내려받는 중… {percent}%": "Downloading the update… {percent}%",
   "업데이트하지 못했습니다: {error}": "Could not update: {error}",
 
-  // 트레이
+  // tray
   "모든 메모 보이기": "Show all notes",
   "모든 메모 숨기기": "Hide all notes",
   "시작 시 자동 실행": "Start at login",
   종료: "Quit",
 
-  // 친구
+  // friends
   친구: "Friends",
   "친구 (같은 Wi-Fi 공유)": "Friends (share on the same Wi-Fi)",
   "친구 {count}명 중 {online}명 연결됨": "{online} of {count} friends connected",
@@ -213,7 +213,7 @@ export const en: Record<string, Translation> = {
   "{name}을(를) 친구로 등록했습니다.": "{name} is now your friend.",
   "친구 등록을 하지 못했습니다.": "Could not add the friend.",
   "상대 기기": "Other device",
-  // 친구 등록 실패 이유 (상대 기기가 보낸 이유도 이 키로 번역된다)
+  // reasons for failed pairing (reasons sent by the other device are translated through these keys too)
   "시간이 초과되었습니다": "Timed out",
   "확인 코드가 서로 다릅니다": "The codes do not match",
   "상대가 보낸 값이 약속과 다릅니다 (연결이 조작되었을 수 있음)":
@@ -227,7 +227,7 @@ export const en: Record<string, Translation> = {
   "Urinote 연결 코드가 아닙니다": "This is not an Urinote connection code",
   "연결 코드가 손상되었습니다": "The connection code is damaged",
 
-  // 공유
+  // sharing
   "친구와 공유": "Share with friends",
   "친구와 공유 (같은 Wi-Fi)": "Share with friends (same Wi-Fi)",
   "공유 중 · {count}명 (지금 연결 {online}명)": "Shared · {count} members ({online} connected now)",

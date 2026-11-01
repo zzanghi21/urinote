@@ -1,4 +1,4 @@
-//! 데스크톱 전용: 트레이, 전역 단축키, 자동 실행, 단일 인스턴스
+//! Desktop only: tray, global shortcuts, autostart, single instance
 
 use std::{
     collections::HashMap,
@@ -16,15 +16,15 @@ use tauri_plugin_global_shortcut::{
     Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
 };
 
-/// 자동 실행 시 Hub 창을 띄우지 않고 트레이와 스티키 메모만 복원한다
+/// When autostarted, don't show the hub window; restore only the tray and sticky notes
 const HIDDEN_ARG: &str = "--hidden";
 
-/// 프런트엔드(Hub 창)가 처리하는 이벤트
+/// Events handled by the frontend (hub window)
 const EVENT_NEW_STICKY: &str = "app://new-sticky";
-/// 종료 직전 모든 창이 저장 대기 중인 입력을 저장하도록 알린다
+/// Tells every window to save pending input right before quitting
 const EVENT_FLUSH: &str = "app://flush";
 
-/// 전역 단축키 조합: macOS 는 ⌘⌥, 그 밖에는 Ctrl+Alt (프런트엔드 platform/shortcuts.ts 와 같아야 한다)
+/// Global shortcut modifiers: ⌘⌥ on macOS, Ctrl+Alt elsewhere (must match frontend platform/shortcuts.ts)
 fn global_mods() -> Modifiers {
     if cfg!(target_os = "macos") {
         Modifiers::SUPER | Modifiers::ALT
@@ -41,11 +41,11 @@ fn shortcut_toggle() -> Shortcut {
     Shortcut::new(Some(global_mods()), Code::KeyH)
 }
 
-/// 저장 대기 중인 입력을 저장하라고 알린 뒤에만 실제로 종료한다
+/// Only actually quit after telling windows to save pending input
 static FLUSHED: AtomicBool = AtomicBool::new(false);
 
-/// 앱 전체 이벤트: 종료 요청(트레이 "종료", macOS ⌘Q, 로그아웃)은 입력을 저장한 뒤 종료하고,
-/// macOS 에서 Dock 아이콘을 누르면 Hub 창을 다시 띄운다
+/// App-wide events: quit requests (tray "Quit", ⌘Q on macOS, logout) save input before quitting, and
+/// clicking the Dock icon on macOS shows the hub window again
 pub fn on_run_event<R: Runtime>(app: &AppHandle<R>, event: &RunEvent) {
     match event {
         RunEvent::ExitRequested { api, .. } if !FLUSHED.load(Ordering::SeqCst) => {
@@ -81,7 +81,7 @@ pub fn plugins(builder: Builder<Wry>) -> Builder<Wry> {
                 })
                 .build(),
         )
-        // 자동 업데이트 (Hub 창이 확인·설치) + 설치 후 다시 시작
+        // auto-update (checked and installed by the hub window) + relaunch after installing
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
 }
@@ -89,7 +89,7 @@ pub fn plugins(builder: Builder<Wry>) -> Builder<Wry> {
 pub fn setup(app: &mut App) -> tauri::Result<()> {
     build_tray(app)?;
 
-    // 다른 프로그램이 이미 쓰는 단축키면 등록에 실패할 수 있다. 앱 실행은 계속한다.
+    // registration fails if another program already uses the shortcut; the app keeps running
     for shortcut in [shortcut_new(), shortcut_toggle()] {
         if let Err(err) = app.global_shortcut().register(shortcut) {
             log::warn!("global shortcut {shortcut:?} not registered: {err}");
@@ -103,7 +103,7 @@ pub fn setup(app: &mut App) -> tauri::Result<()> {
 }
 
 fn build_tray(app: &App) -> tauri::Result<()> {
-    // 문구는 Hub 가 앱 언어·OS 에 맞게 tray_set_labels 로 바꾼다 (Linux 는 단축키 표시를 하지 않음)
+    // the hub sets labels for the app language and OS via tray_set_labels (no shortcut text on Linux)
     let new = MenuItem::with_id(app, "new", "새 메모", true, None::<&str>)?;
     let show_all = MenuItem::with_id(app, "show_all", "모든 메모 보이기", true, None::<&str>)?;
     let hide_all = MenuItem::with_id(app, "hide_all", "모든 메모 숨기기", true, None::<&str>)?;
@@ -173,10 +173,10 @@ fn build_tray(app: &App) -> tauri::Result<()> {
     Ok(())
 }
 
-/// 트레이 메뉴. 앱 언어를 바꾸면 Hub 가 `tray_set_labels` 로 문구를 바꾼다
+/// Tray menu. When the app language changes, the hub updates the labels via `tray_set_labels`
 pub struct TrayMenu(Menu<Wry>);
 
-/// 메뉴 ID(new, show_all, hide_all, hub, autostart, quit) → 표시 문구
+/// Menu ID (new, show_all, hide_all, hub, autostart, quit) → label
 #[tauri::command]
 pub(crate) fn tray_set_labels(menu: State<'_, TrayMenu>, labels: HashMap<String, String>) {
     for (id, text) in labels {
@@ -217,7 +217,7 @@ fn set_stickies_visible<R: Runtime>(app: &AppHandle<R>, visible: bool) {
     }
 }
 
-/// 보이는 스티키가 하나라도 있으면 모두 숨기고, 아니면 모두 보인다
+/// Hides all stickies if any is visible, otherwise shows them all
 fn toggle_stickies<R: Runtime>(app: &AppHandle<R>) {
     let any_visible = sticky_windows(app)
         .iter()

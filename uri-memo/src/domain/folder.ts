@@ -1,6 +1,6 @@
 import { v7 as uuidv7 } from "uuid";
 
-/** 메모 폴더 (F-07). 폴더는 내 기기 안에서만 쓰는 개인 분류다 (공유 메모도 각자 폴더에 둔다) */
+/** Note folders (F-07). Folders are a personal grouping on this device (shared notes too go into each person's own folders) */
 export interface Folder {
   id: string;
   name: string;
@@ -12,13 +12,13 @@ export interface Folder {
 export const FOLDER_NAME_MAX = 40;
 
 export interface FolderRepository {
-  /** 정렬 순서대로 */
+  /** In sort order */
   list(): Promise<Folder[]>;
   upsert(folder: Folder): Promise<void>;
   remove(id: string): Promise<void>;
 }
 
-/** 앞뒤 공백을 지우고 길이를 자른다. 비어 있으면 null */
+/** Trims whitespace and limits the length. null if empty */
 export function cleanFolderName(name: string): string | null {
   const trimmed = name.trim().replace(/\s+/g, " ").slice(0, FOLDER_NAME_MAX);
   return trimmed === "" ? null : trimmed;

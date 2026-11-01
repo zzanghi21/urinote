@@ -10,10 +10,10 @@ import {
 import { legacyContentToUpdate } from "./noteDoc";
 import type { NoteRepository } from "./repository";
 
-/** 본문은 Yjs 문서로 따로 저장하므로, 여기서는 목록·검색용 텍스트 캐시와 개인 메타데이터만 바꾼다 */
+/** The body is stored separately as a Yjs document; this only changes the list/search text cache and personal metadata */
 export type NoteEdit = Partial<Pick<Note, "plainText" | "color" | "pinned" | "folderId">>;
 
-/** 업데이트 로그가 이 건수를 넘는 문서를 스냅샷으로 합친다 */
+/** Documents whose update log exceeds this count are merged into the snapshot */
 export const LOCAL_COMPACT_THRESHOLD = 50;
 
 export class NoteService {
@@ -37,7 +37,7 @@ export class NoteService {
     return note;
   }
 
-  /** 지운 폴더의 메모를 폴더 없음으로 (다른 편집과 섞이지 않게 순서대로) */
+  /** Moves notes of a deleted folder to no folder (queued so it doesn't interleave with other edits) */
   clearFolder(folderId: string) {
     return this.enqueue(() => this.repo.clearFolder(folderId));
   }
@@ -50,12 +50,12 @@ export class NoteService {
     });
   }
 
-  /** 알림 시각 설정·해제. 내용이 바뀐 것은 아니므로 수정 시각(목록 순서)은 그대로 둔다 */
+  /** Sets or clears the reminder. The content didn't change, so the modified time (list order) stays */
   setReminder(id: string, remindAt: number | null) {
     return this.mutate(id, (note) => ({ ...note, remindAt }), { touch: false });
   }
 
-  /** 휴지통에 없는 메모 중 알림이 있는 것 */
+  /** Notes outside the trash that have a reminder */
   async withReminders(): Promise<Note[]> {
     return (await this.repo.list({ view: "all" })).filter((n) => n.remindAt !== null);
   }
@@ -69,8 +69,8 @@ export class NoteService {
   }
 
   /**
-   * 영구 삭제. 동기화 전(M3b)에는 행을 바로 지운다.
-   * 동기화 도입 후에는 툼스톤을 서버에 올린 뒤 지우도록 바꾼다.
+   * Deletes forever. Before sync (M3b) the row is deleted right away.
+   * Once sync exists, this should upload a tombstone first and then delete.
    */
   deleteForever(id: string) {
     return this.enqueue(async () => {
@@ -84,13 +84,13 @@ export class NoteService {
   }
 
   /**
-   * 내용 없이 떠난 메모를 지운다 (스티키 메모 관례). 아직 서버에 올라간 적 없는 메모만 대상이다.
-   * 대기 중인 편집 뒤에 실행되므로 방금 입력한 내용이 있으면 지우지 않는다.
+   * Deletes a note left empty (sticky-note convention). Only notes never uploaded to a server.
+   * Runs after queued edits, so it does not delete a note that just received input.
    */
   discardIfEmpty(id: string): Promise<boolean> {
     return this.enqueue(async () => {
       const note = await this.repo.get(id);
-      // 공유 메모는 친구가 막 만든 빈 메모일 수 있으므로 지우지 않는다 (DESIGN.md 4.9.7)
+      // shared notes may be empty notes a friend just created, so keep them (DESIGN.md 4.9.7)
       if (
         !note ||
         note.spaceId !== null ||
@@ -107,8 +107,8 @@ export class NoteService {
   }
 
   /**
-   * M1/M2 에서 TipTap JSON 으로 저장한 본문을 Yjs 문서로 옮긴다.
-   * 같은 메모를 두 번 변환하면 내용이 중복되므로, 스티키 창을 열기 전에 Hub 에서 한 번만 실행한다.
+   * Moves bodies saved as TipTap JSON (M1/M2) into Yjs documents.
+   * Converting a note twice would duplicate its content, so the hub runs this once, before opening stickies.
    */
   migrateLegacyContent(): Promise<number> {
     return this.enqueue(async () => {
@@ -127,8 +127,8 @@ export class NoteService {
   }
 
   /**
-   * 친구가 공유한 메모를 내 기기에 만든다. 모든 멤버가 같은 메모 ID 를 쓴다.
-   * 본문은 따로 문서 저장소에 넣고, 여기서는 목록용 캐시와 내 개인 설정만 만든다.
+   * Creates a note shared by a friend on this device. All members use the same note ID.
+   * The body goes into the document store separately; this only creates the list cache and my settings.
    */
   adoptShared(id: string, plainText: string, color: NoteColor): Promise<Note> {
     return this.enqueue(async () => {
@@ -144,7 +144,7 @@ export class NoteService {
     });
   }
 
-  /** 공유 시작(spaceId = 메모 ID) 또는 개인 메모로 되돌리기(null) */
+  /** Starts sharing (spaceId = note ID) or turns it back into a personal note (null) */
   setSpace(id: string, spaceId: string | null) {
     return this.mutate(id, (note) => ({ ...note, spaceId }));
   }
@@ -153,7 +153,7 @@ export class NoteService {
     return this.docs.compact(threshold);
   }
 
-  /** 읽기-수정-쓰기가 서로 끼어들어 변경이 유실되지 않도록 변경을 한 줄로 실행한다 */
+  /** Runs changes one at a time so interleaved read-modify-writes don't lose edits */
   private queue: Promise<unknown> = Promise.resolve();
 
   private enqueue<T>(run: () => Promise<T>): Promise<T> {

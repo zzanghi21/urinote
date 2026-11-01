@@ -1,11 +1,11 @@
-//! 같은 Wi-Fi 안의 Urinote 기기끼리 직접 연결하는 P2P 노드 (DESIGN.md 4.9).
+//! P2P node connecting Urinote devices directly on the same Wi-Fi (DESIGN.md 4.9).
 //!
-//! - iroh Endpoint: 릴레이·외부 DNS 없이 로컬 네트워크만 사용 (`presets::Minimal` + `RelayMode::Disabled`)
-//! - mDNS(`_urinote._udp.local`)로 기기 발견
-//! - 연결 상대의 기기 ID 는 TLS 로 확인된 값이다
-//! - 메시지 내용은 해석하지 않는다. 길이 접두(4바이트 BE) 프레임으로 주고받기만 한다.
+//! - iroh Endpoint: local network only, no relays or external DNS (`presets::Minimal` + `RelayMode::Disabled`)
+//! - device discovery via mDNS (`_urinote._udp.local`)
+//! - the peer's device ID is verified by TLS
+//! - message contents are not interpreted; they are just exchanged as length-prefixed (4-byte BE) frames.
 //!
-//! Tauri 와 무관하게 동작하므로 `cargo test` 로 검증한다.
+//! Independent of Tauri, so it is tested with `cargo test`.
 
 use std::{
     collections::{HashMap, HashSet},
@@ -27,15 +27,15 @@ pub const ALPN: &[u8] = b"urinote/share/1";
 pub const MDNS_SERVICE: &str = "urinote";
 pub const MAX_FRAME: usize = 4 * 1024 * 1024;
 
-/// mDNS 광고에 붙이는 표시. 친구 추가 모드일 때만 `urinote:<표시 이름>` 으로 이름을 드러낸다.
+/// Marker in the mDNS advertisement. Reveals the name as `urinote:<display name>` only in Add-a-friend mode.
 const USER_DATA_TAG: &str = "urinote";
-/// 상대가 1초에 보낼 수 있는 최대 메시지 수. 넘으면 연결을 끊는다.
+/// Maximum messages a peer may send per second. Exceeding it closes the connection.
 const RATE_LIMIT_PER_SEC: u32 = 200;
 const SEND_QUEUE: usize = 256;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NodeEvent {
-    /// 같은 네트워크에서 Urinote 기기를 찾았다. `name` 은 상대가 친구 추가 모드일 때만 있다.
+    /// Found a Urinote device on the network. `name` is present only while it is in Add-a-friend mode.
     Discovered { id: EndpointId, name: Option<String> },
     Expired { id: EndpointId },
     Connected { id: EndpointId },
@@ -43,7 +43,7 @@ pub enum NodeEvent {
     Message { from: EndpointId, data: Vec<u8> },
 }
 
-/// 어떤 기기와 연결을 허용할지. 친구(contacts)는 항상, 그 밖의 기기는 친구 추가 모드일 때만.
+/// Which devices may connect: friends (contacts) always, others only in Add-a-friend mode.
 #[derive(Debug, Default)]
 struct Policy {
     contacts: HashSet<EndpointId>,
@@ -52,7 +52,7 @@ struct Policy {
 
 struct Peer {
     conn: Connection,
-    /// 이 연결을 먼저 건 쪽. 양쪽이 동시에 걸었을 때 같은 연결을 남기기 위해 쓴다.
+    /// Which side dialed this connection. Used to keep the same connection when both dial at once.
     dialer: EndpointId,
     tx: mpsc::Sender<Vec<u8>>,
 }
@@ -82,7 +82,7 @@ pub struct Node {
 }
 
 pub struct NodeOptions {
-    /// 테스트에서는 mDNS 없이 주소로 직접 연결한다
+    /// Tests connect directly by address, without mDNS
     pub mdns: bool,
 }
 
@@ -134,7 +134,7 @@ impl Node {
         self.endpoint.id()
     }
 
-    /// 수동 연결(QR)용 주소: 기기 ID + 로컬 IP 주소들
+    /// Address for manual connection (QR): device ID + local IP addresses
     pub fn addr(&self) -> EndpointAddr {
         self.endpoint.addr()
     }
@@ -144,7 +144,7 @@ impl Node {
         policy.contacts = contacts.into_iter().collect();
     }
 
-    /// 친구 추가 모드. `Some(이름)` 이면 켜고 mDNS 에 이름을 광고한다.
+    /// Add-a-friend mode. `Some(name)` turns it on and advertises the name over mDNS.
     pub fn set_pairing(&self, name: Option<String>) -> Result<()> {
         self.shared.policy.write().expect("policy lock poisoned").pairing = name.is_some();
         if self.mdns.is_some() {
@@ -194,7 +194,7 @@ pub fn verify(signer: &EndpointId, data: &[u8], signature: &[u8]) -> bool {
 fn user_data(name: Option<&str>) -> Result<UserData> {
     let text = match name {
         Some(name) => {
-            // UTF-8 경계를 지키며 최대 길이에 맞춘다
+            // truncate to the maximum length on a UTF-8 boundary
             let mut text = format!("{USER_DATA_TAG}:{name}");
             while text.len() > UserData::MAX_LENGTH {
                 text.pop();
@@ -206,7 +206,7 @@ fn user_data(name: Option<&str>) -> Result<UserData> {
     UserData::try_from(text).context("잘못된 표시 이름")
 }
 
-/// mDNS 광고에서 Urinote 기기인지와 표시 이름을 읽는다
+/// Reads from an mDNS advertisement whether it is a Urinote device, and its display name
 fn parse_user_data(data: Option<&UserData>) -> Option<Option<String>> {
     let text = data?.as_ref();
     if text == USER_DATA_TAG {
@@ -223,10 +223,10 @@ async fn discovery_loop(mdns: MdnsAddressLookup, endpoint: Endpoint, shared: Arc
             DiscoveryEvent::Discovered { endpoint_info, .. } => {
                 let id = endpoint_info.endpoint_id;
                 let Some(name) = parse_user_data(endpoint_info.data.user_data()) else {
-                    continue; // Urinote 가 아닌 iroh 기기
+                    continue; // an iroh device that isn't Urinote
                 };
                 shared.emit(NodeEvent::Discovered { id, name });
-                // 친구 기기는 자동으로 연결한다. 양쪽이 동시에 걸지 않도록 ID 가 작은 쪽만 건다.
+                // connect to friend devices automatically; only the side with the smaller ID dials, so both don't at once
                 let is_contact = shared
                     .policy
                     .read()
@@ -284,14 +284,14 @@ async fn connect(endpoint: &Endpoint, shared: &Arc<Shared>, addr: EndpointAddr) 
     }
     let conn = endpoint.connect(addr, ALPN).await.context("연결하지 못했습니다")?;
     let (mut send, recv) = conn.open_bi().await?;
-    // QUIC 스트림은 첫 데이터가 가야 상대가 accept_bi 로 받는다 → 빈 프레임을 보낸다
+    // a QUIC stream reaches the peer's accept_bi only after the first data → send an empty frame
     write_frame(&mut send, &[]).await?;
     register(shared.clone(), conn, shared.me, send, recv).await;
     Ok(())
 }
 
-/// 연결을 등록하고 송수신 작업을 시작한다.
-/// 같은 기기와 연결이 이미 있으면 ID 가 작은 쪽이 건 연결을 남긴다 (양쪽이 같은 결론을 낸다).
+/// Registers a connection and starts its send/receive tasks.
+/// If a connection to the same device exists, keep the one dialed by the smaller ID (both sides agree).
 async fn register(
     shared: Arc<Shared>,
     conn: Connection,
@@ -321,7 +321,7 @@ async fn register(
         }
         conn.close(0u32.into(), b"closed");
         let mut peers = shared.peers.lock().await;
-        // 중복 연결 정리로 이미 다른 연결로 바뀌었다면 그 연결은 건드리지 않는다
+        // if deduplication already replaced it with another connection, leave that one alone
         if peers.get(&id).is_some_and(|p| p.conn.stable_id() == conn.stable_id()) {
             peers.remove(&id);
             drop(peers);
@@ -364,7 +364,7 @@ async fn write_frame(send: &mut SendStream, data: &[u8]) -> Result<()> {
     Ok(())
 }
 
-/// 상대가 스트림을 정상 종료하면 `None`
+/// `None` when the peer closes the stream normally
 async fn read_frame(recv: &mut RecvStream) -> Result<Option<Vec<u8>>> {
     let mut len = [0u8; 4];
     match recv.read_exact(&mut len).await {
@@ -416,7 +416,7 @@ mod tests {
         a.send(b.id(), b"hello from a".to_vec()).await.unwrap();
         assert_eq!(next_message(&mut b_rx).await, (a.id(), b"hello from a".to_vec()));
 
-        // 받은 쪽에서도 같은 연결로 답할 수 있다
+        // the receiving side can reply over the same connection
         tokio::time::sleep(Duration::from_millis(100)).await;
         b.send(a.id(), b"hi".to_vec()).await.unwrap();
         assert_eq!(next_message(&mut a_rx).await, (b.id(), b"hi".to_vec()));
@@ -426,7 +426,7 @@ mod tests {
     async fn rejects_devices_that_are_not_contacts() {
         let (a, _a_rx) = node().await;
         let (b, _b_rx) = node().await;
-        a.set_pairing(Some("A".into())).unwrap(); // A 는 걸 수 있지만 B 가 친구로 등록하지 않았다
+        a.set_pairing(Some("A".into())).unwrap(); // A may dial, but B hasn't added A as a friend
 
         let _ = a.connect(b.addr()).await;
         tokio::time::sleep(Duration::from_millis(500)).await;
@@ -457,10 +457,10 @@ mod tests {
         assert!(!verify(&a.id(), b"members v2", &sig[..10]));
     }
 
-    /// 실제 mDNS 멀티캐스트로 서로 찾고, 친구끼리는 자동으로 연결되는지 (같은 PC 안의 두 노드)
+    /// Two nodes on one PC find each other over real mDNS multicast, and friends connect automatically
     #[tokio::test]
     async fn discovers_and_auto_connects_contacts_over_mdns() {
-        // CI 러너는 멀티캐스트를 막는 경우가 많다
+        // CI runners often block multicast
         if std::env::var_os("CI").is_some() {
             eprintln!("skipped on CI: needs multicast");
             return;
@@ -485,7 +485,7 @@ mod tests {
         assert_eq!(a_saw.as_deref(), Some("B 노트북"));
     }
 
-    /// 상대를 mDNS 로 발견하고 연결될 때까지 기다린다. 발견 중 받은 표시 이름을 돌려준다.
+    /// Waits until the peer is discovered via mDNS and connected. Returns the display name seen during discovery.
     async fn wait_discovered_and_connected(
         rx: &mut mpsc::UnboundedReceiver<NodeEvent>,
         peer: EndpointId,

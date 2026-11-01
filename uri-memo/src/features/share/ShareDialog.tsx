@@ -13,7 +13,7 @@ const ROLE_LABEL: Record<ShareRole, string> = {
   viewer: "보기 전용",
 };
 
-/** 메모 1개의 공유 설정: 공유 시작 / 멤버 관리(소유자) / 나가기(멤버) */
+/** Sharing settings for one note: start sharing / manage members (owner) / leave (member) */
 export function ShareDialog() {
   const t = useT();
   const noteId = useShare((s) => s.shareDialogNoteId);
@@ -277,7 +277,7 @@ function ShareFooter({
   );
 }
 
-/** 받은 공유 제안 (Hub 목록 위) */
+/** Received share offers (above the hub list) */
 export function OfferBanner() {
   const t = useT();
   const inbox = useShare((s) => s.inbox);

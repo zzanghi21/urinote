@@ -1,7 +1,7 @@
 import { compareNotes, matchesFilter, type Note, type NoteFilter } from "../../domain/note";
 import type { NoteRepository } from "../../domain/repository";
 
-/** 테스트와 브라우저 미리보기(npm run dev)용 저장소. localStorage 키를 주면 새로고침 후에도 유지된다. */
+/** Store for tests and the browser preview (npm run dev). With a localStorage key it survives reloads. */
 export class MemoryNoteRepository implements NoteRepository {
   private notes = new Map<string, Note>();
 

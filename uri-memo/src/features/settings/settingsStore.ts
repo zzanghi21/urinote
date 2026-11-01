@@ -3,8 +3,8 @@ import { FONT_SCALE, parseSettings, type Settings } from "../../domain/settings"
 import { setLocale, systemLocale } from "../../i18n";
 
 /**
- * 설정은 localStorage 에 둔다. 같은 앱의 창들은 저장소를 함께 쓰고,
- * 한 창에서 바꾸면 다른 창에 `storage` 이벤트가 와서 바로 반영된다.
+ * Settings live in localStorage. The app's windows share that storage, and a change in one window
+ * reaches the others immediately through the `storage` event.
  */
 const STORAGE_KEY = "urinote:settings";
 
@@ -19,7 +19,7 @@ function load(): Settings {
   }
 }
 
-/** 테마·글자 크기·언어를 문서에 적용한다 (CSS 는 data-theme, --font-scale 을 본다) */
+/** Applies theme, text size and language to the document (CSS reads data-theme and --font-scale) */
 function apply(settings: Settings) {
   setLocale(settings.language === "system" ? systemLocale() : settings.language);
   const root = document.documentElement;
@@ -30,11 +30,11 @@ function apply(settings: Settings) {
 }
 
 interface SettingsState extends Settings {
-  /** 설정 창 (Hub) */
+  /** Settings dialog (hub) */
   dialogOpen: boolean;
   setDialogOpen(open: boolean): void;
   update(patch: Partial<Settings>): void;
-  /** 가져오기 등으로 설정 전체를 바꾼다 */
+  /** Replaces all settings (e.g. on import) */
   replace(settings: unknown): void;
 }
 
@@ -67,7 +67,7 @@ const pick = ({ theme, defaultColor, fontSize, language }: Settings): Settings =
 
 export const currentSettings = (): Settings => pick(useSettings.getState());
 
-/** 창을 그리기 전에 한 번 호출한다 */
+/** Call once before rendering the window */
 export function initSettings() {
   apply(currentSettings());
   window.addEventListener("storage", (e) => {

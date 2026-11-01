@@ -12,9 +12,9 @@ const service = async () => {
   return new BackupService(notes, docs, folders);
 };
 
-/** 백업 파일로 저장한다. 저장했으면 메모 수, 취소했으면 null */
+/** Saves a backup file. Returns the note count, or null if cancelled */
 export async function exportBackup(): Promise<number | null> {
-  // 편집 중인 입력까지 담는다
+  // include input still being edited
   flushPendingEdit();
   await flushAllDocs();
   const backup = await (await service()).export(currentSettings());
@@ -23,8 +23,8 @@ export async function exportBackup(): Promise<number | null> {
 }
 
 /**
- * 백업 파일을 골라 합친다. 파일 형식이 틀리면 BackupFormatError.
- * confirm 이 false 를 돌려주거나 파일 선택을 취소하면 null
+ * Picks a backup file and merges it. Throws BackupFormatError if the format is wrong.
+ * Returns null if confirm returns false or the file picker is cancelled.
  */
 export async function importBackup(
   confirm: (summary: { notes: number; folders: number }) => boolean,
@@ -38,7 +38,7 @@ export async function importBackup(
   await flushAllDocs();
   const result = await (await service()).import(backup);
   useSettings.getState().replace(result.settings);
-  // 열려 있는 편집기(Hub·스티키)에 합친 본문을 반영한다. 공유 메모면 친구에게도 전해진다
+  // apply merged bodies to open editors (hub and stickies); shared notes also reach friends
   for (const note of backup.notes) {
     if (note.doc) emitDocUpdate(note.id, note.doc, "import");
     emitNoteChanged(note.id);

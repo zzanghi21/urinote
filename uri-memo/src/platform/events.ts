@@ -2,10 +2,10 @@ import { emit, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { inTauri } from "./env";
 
-/** 창(Hub·스티키)끼리 메모 변경을 알리는 이벤트 */
+/** Event announcing note changes between windows (hub and stickies) */
 const NOTE_CHANGED = "note:changed";
 
-/** src-tauri/src/desktop.rs 가 보내는 이벤트 */
+/** Events sent by src-tauri/src/desktop.rs */
 export type AppEvent = "app://new-sticky" | "app://flush";
 
 interface NoteChangedPayload {
@@ -20,14 +20,14 @@ export function emitNoteChanged(id: string) {
   void emit(NOTE_CHANGED, { id, source: windowLabel } satisfies NoteChangedPayload);
 }
 
-/** 다른 창에서 메모가 바뀌었을 때 호출된다. 해제 함수를 반환한다. */
+/** Called when a note changed in another window. Returns an unsubscribe function. */
 export function onNoteChangedElsewhere(handler: (id: string) => void): () => void {
   return subscribe<NoteChangedPayload>(NOTE_CHANGED, (payload) => {
     if (payload.source !== windowLabel) handler(payload.id);
   });
 }
 
-/** 모든 창에 앱 이벤트를 보낸다 (예: 업데이트 설치 전 app://flush) */
+/** Sends an app event to every window (e.g. app://flush before installing an update) */
 export async function emitAppEvent(event: AppEvent) {
   if (inTauri) await emit(event);
 }
@@ -36,17 +36,17 @@ export function onAppEvent(event: AppEvent, handler: () => void): () => void {
   return subscribe(event, handler);
 }
 
-/** 같은 PC의 다른 창에 본문 Yjs 업데이트를 보낸다 */
+/** Sends a body Yjs update to the other windows on this PC */
 const DOC_UPDATE = "doc:update";
 
 interface DocUpdatePayload {
   noteId: string;
-  /** base64(Yjs 업데이트) */
+  /** base64(Yjs update) */
   update: string;
   source: string;
 }
 
-/** 친구 기기에서 받은 업데이트의 출처 표시. 모든 창(Hub 포함)이 적용한다. */
+/** Source marker for updates received from friend devices. Every window (hub included) applies them. */
 export const P2P_SOURCE = "p2p";
 
 export function emitDocUpdate(noteId: string, update: string, source = windowLabel) {
@@ -54,7 +54,7 @@ export function emitDocUpdate(noteId: string, update: string, source = windowLab
   void emit(DOC_UPDATE, { noteId, update, source } satisfies DocUpdatePayload);
 }
 
-/** 모든 창의 본문 업데이트 (공유 엔진이 친구 기기로 보낼 편집을 모은다) */
+/** Body updates from every window (the share engine collects edits to send to friends) */
 export async function onAnyDocUpdate(
   handler: (noteId: string, update: string, source: string) => void,
 ): Promise<() => void> {
@@ -65,8 +65,8 @@ export async function onAnyDocUpdate(
 }
 
 /**
- * 다른 창의 본문 업데이트를 받는다. 등록이 끝난 뒤 resolve 되므로,
- * 문서를 DB에서 읽기 전에 await 하면 그 사이의 업데이트를 놓치지 않는다.
+ * Receives body updates from other windows. Resolves once registered, so awaiting it before
+ * reading the document from the DB means no update in between is missed.
  */
 export async function onDocUpdateElsewhere(
   noteId: string,
@@ -79,13 +79,13 @@ export async function onDocUpdateElsewhere(
 }
 
 /**
- * 커서·이름 표시(awareness). 창 → Hub: 내 커서 (source = 창 이름),
- * Hub → 창: 친구 커서 (source = P2P_SOURCE)
+ * Cursors and names (awareness). Window → hub: my cursor (source = window label),
+ * hub → windows: friend cursors (source = P2P_SOURCE)
  */
 const AWARENESS_UPDATE = "awareness:update";
-/** 창 → Hub: 막 연 메모의 친구 커서를 보내 달라 */
+/** Window → hub: send the friend cursors for a note that was just opened */
 const AWARENESS_QUERY = "awareness:query";
-/** Hub → 창: 친구 기기가 새로 연결되었으니 내 커서를 다시 보내 달라 */
+/** Hub → windows: a friend device just connected, send your cursors again */
 const AWARENESS_RENEW = "awareness:renew";
 
 export function emitAwareness(noteId: string, update: string, source = windowLabel) {
@@ -93,7 +93,7 @@ export function emitAwareness(noteId: string, update: string, source = windowLab
   void emit(AWARENESS_UPDATE, { noteId, update, source } satisfies DocUpdatePayload);
 }
 
-/** 창용: 친구 커서. 등록이 끝난 뒤 resolve 된다 */
+/** For windows: friend cursors. Resolves once registered */
 export async function onPeerAwareness(
   noteId: string,
   handler: (update: string) => void,
@@ -104,7 +104,7 @@ export async function onPeerAwareness(
   });
 }
 
-/** Hub 용: 내 창들의 커서 */
+/** For the hub: cursors of my windows */
 export async function onLocalAwareness(
   handler: (noteId: string, update: string) => void,
 ): Promise<() => void> {

@@ -7,7 +7,7 @@ const formatter = (options: Intl.DateTimeFormatOptions) =>
 
 const startOfDay = (ms: number) => new Date(ms).setHours(0, 0, 0, 0);
 
-/** 오늘이면 시각, 어제면 "어제", 올해면 월/일, 그 외에는 연월일 */
+/** Time if today, "yesterday", month/day if this year, otherwise the full date */
 export function formatNoteTime(ms: number, now = Date.now()): string {
   const days = Math.round((startOfDay(now) - startOfDay(ms)) / 86_400_000);
   if (days <= 0) return formatter({ hour: "numeric", minute: "2-digit" }).format(ms);

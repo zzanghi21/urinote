@@ -4,7 +4,7 @@ import { StickyWindowRepository } from "../data/local/stickyWindowRepo";
 import { t } from "../i18n";
 
 export const STICKY_MIN_WIDTH = 200;
-/** 접힌 스티키 = 상단 바만 보이는 높이 */
+/** Collapsed sticky = height showing only the top bar */
 export const STICKY_COLLAPSED_HEIGHT = 36;
 
 const CASCADE_ORIGIN = { x: 120, y: 120 };
@@ -13,7 +13,7 @@ const CASCADE_STEP = 28;
 export const stickyLabel = (noteId: string) => `sticky-${noteId}`;
 
 export interface OpenStickyOptions {
-  /** 저장된 위치가 없을 때 놓을 곳. 기본값은 계단식 배치 */
+  /** Where to place it without a saved position. Cascades by default */
   at?: "cursor" | { x: number; y: number };
   focus?: boolean;
 }
@@ -22,7 +22,7 @@ export async function isStickyOpen(noteId: string) {
   return (await WebviewWindow.getByLabel(stickyLabel(noteId))) !== null;
 }
 
-/** 메모를 스티키 창으로 연다. 이미 열려 있으면 앞으로 가져온다. */
+/** Opens a note as a sticky window, or brings it to the front if already open. */
 export async function openSticky(noteId: string, options: OpenStickyOptions = {}) {
   const existing = await WebviewWindow.getByLabel(stickyLabel(noteId));
   if (existing) {
@@ -62,7 +62,7 @@ export async function openSticky(noteId: string, options: OpenStickyOptions = {}
   );
 }
 
-/** 앱 시작 시 지난번에 열려 있던 스티키를 모두 복원한다 */
+/** Restores every sticky that was open last time, at app startup */
 export async function restoreOpenStickies() {
   const repo = await StickyWindowRepository.open();
   for (const state of await repo.listOpen()) {
@@ -70,7 +70,7 @@ export async function restoreOpenStickies() {
   }
 }
 
-/** 영구 삭제된 메모의 창과 상태를 정리한다 */
+/** Cleans up the window and state of a note deleted forever */
 export async function forgetSticky(noteId: string) {
   await (await WebviewWindow.getByLabel(stickyLabel(noteId)))?.destroy();
   await (await StickyWindowRepository.open()).remove(noteId);
@@ -96,7 +96,7 @@ async function initialPosition(at: OpenStickyOptions["at"]) {
   return { x: CASCADE_ORIGIN.x + offset, y: CASCADE_ORIGIN.y + offset };
 }
 
-/** 모니터 구성이 바뀌어 창의 제목 줄이 어느 화면에도 보이지 않으면 false */
+/** false if the monitor layout changed and the window's title bar is on no screen */
 async function isOnScreen({ x, y }: { x: number; y: number }) {
   const monitors = await availableMonitors();
   const MARGIN = 40;

@@ -1,9 +1,9 @@
 import { isMac } from "./env";
 
 /**
- * 단축키 표시. 실제 키 처리는 Ctrl·⌘ 모두 받는다 (App.tsx, TipTap 의 Mod 키).
- *   appKey("N")    → Windows·Linux "Ctrl+N", macOS "⌘N"
- *   globalKey("N") → Windows·Linux "Ctrl+Alt+N", macOS "⌥⌘N" (src-tauri/src/desktop.rs 와 같아야 한다)
+ * Shortcut labels. Key handling itself accepts both Ctrl and ⌘ (App.tsx, TipTap's Mod key).
+ *   appKey("N")    → Windows/Linux "Ctrl+N", macOS "⌘N"
+ *   globalKey("N") → Windows/Linux "Ctrl+Alt+N", macOS "⌥⌘N" (must match src-tauri/src/desktop.rs)
  */
 export const appKey = (key: string) => (isMac ? `⌘${key}` : `Ctrl+${key}`);
 

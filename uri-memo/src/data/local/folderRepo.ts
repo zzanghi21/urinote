@@ -41,7 +41,7 @@ export class SqliteFolderRepository implements FolderRepository {
   }
 }
 
-/** 테스트와 브라우저 미리보기용 */
+/** For tests and the browser preview */
 export class MemoryFolderRepository implements FolderRepository {
   private folders = new Map<string, Folder>();
 

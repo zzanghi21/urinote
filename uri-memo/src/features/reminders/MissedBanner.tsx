@@ -3,7 +3,7 @@ import { useReminders } from "./remindersStore";
 import { useT } from "../../i18n";
 import "./reminders.css";
 
-/** 앱이 꺼져 있던 동안 지난 알림 (시작할 때 한 번) */
+/** Reminders that passed while the app was closed (shown once at startup) */
 export function MissedBanner() {
   const t = useT();
   const missed = useReminders((s) => s.missed);

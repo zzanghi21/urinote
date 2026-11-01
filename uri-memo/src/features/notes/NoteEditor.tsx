@@ -15,14 +15,14 @@ import { registerEditorFlush } from "./editorFlush";
 import { openPresence, type PresenceHandle } from "./presenceSession";
 import "./collab.css";
 
-/** 목록·검색용 텍스트 캐시 저장 간격. 본문 자체는 docSession 이 따로 저장한다. */
+/** Save interval for the list/search text cache. docSession saves the body itself. */
 const SAVE_DEBOUNCE_MS = 500;
 
 interface Props {
   noteId: string;
   readOnly?: boolean;
   autoFocus?: boolean;
-  /** 친구와 공유 중이면 서로의 커서·이름을 보여 준다 */
+  /** When shared with friends, shows each other's cursors and names */
   shared?: boolean;
   onSave(edit: NoteEdit): void;
 }
@@ -32,7 +32,7 @@ interface Opened {
   presence: PresenceHandle | null;
 }
 
-/** 메모 1개를 편집한다. 메모의 Yjs 문서를 연 뒤 편집기를 띄운다. */
+/** Edits one note: opens its Yjs document, then shows the editor. */
 export function NoteEditor({ noteId, shared = false, ...props }: Props) {
   const [opened, setOpened] = useState<Opened | null>(null);
 
@@ -68,9 +68,10 @@ export function NoteEditor({ noteId, shared = false, ...props }: Props) {
 const getPlainText = (editor: Editor) => editor.getText({ blockSeparator: "\n" });
 
 /**
- * 편집기 첫 내용을 Yjs 문서와 같게 만든다. 빈 문서로 시작하면 Collaboration 이 내용을 채울 때
- * 커서 위치(1)를 그대로 옮겨, 체크리스트로 시작하는 메모에서 TextSelection 경고가 난다.
- * 빈 문서는 그대로 둔다 (빈 문단을 Yjs 에 쓰면 친구 기기와 합칠 때 빈 줄이 겹칠 수 있다).
+ * Starts the editor with the same content as the Yjs document. Starting empty makes Collaboration
+ * keep cursor position 1 when filling the content, which warns (TextSelection) for notes starting
+ * with a checklist. Empty documents stay empty (writing an empty paragraph to Yjs could duplicate
+ * blank lines when merging with friends' devices).
  */
 function initialContent(doc: Y.Doc) {
   const fragment = doc.getXmlFragment(DOC_FIELD);
@@ -128,13 +129,13 @@ function CollabEditor({
     editorProps: { attributes: { class: "note-editor-content", spellcheck: "false" } },
     onCreate({ editor }) {
       if (readOnly || !autoFocus) return;
-      // autofocus: "end" 는 체크리스트로 끝나는 문서에서 글자를 넣을 수 없는 위치를 고른다
+      // autofocus: "end" picks a position where you can't type in documents ending with a checklist
       const { state, view } = editor;
       view.dispatch(state.tr.setSelection(Selection.atEnd(state.doc)));
       view.focus();
     },
     onUpdate({ editor, transaction }) {
-      // 다른 창·기기에서 온 변경은 그쪽이 캐시를 갱신한다
+      // changes from other windows/devices update the cache on their side
       if (transaction.getMeta(ySyncPluginKey)?.isChangeOrigin) return;
       pending.current = () => onSaveRef.current({ plainText: getPlainText(editor) });
       window.clearTimeout(timer.current);
@@ -143,7 +144,7 @@ function CollabEditor({
     onBlur: flush,
   });
 
-  // 다른 메모로 전환하거나 창을 닫거나 앱을 종료할 때 저장하지 않은 입력을 저장한다
+  // save unsaved input when switching notes, closing the window or quitting
   useEffect(() => {
     const flushAll = () => {
       flush();

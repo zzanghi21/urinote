@@ -23,7 +23,7 @@ const FRIEND = "bbbb";
 const OTHER = "cccc";
 const STRANGER = "zzzz";
 
-/** 친구 창의 Awareness 를 흉내 낸다: 문서 위 커서 위치를 상대 위치로 담는다 */
+/** Simulates a friend window's Awareness: stores a cursor position as relative positions */
 function friendWindow(name = "가짜 이름", color = "#000000") {
   const doc = new Y.Doc();
   doc.getText("t").insert(0, "hello");
@@ -62,7 +62,7 @@ async function saveShare(status: Membership["status"] = "active") {
   });
 }
 
-/** 창에 전달된 마지막 업데이트를 내 창의 Awareness 에 적용해 본다 */
+/** Applies the updates sent to windows to a window's Awareness */
 function windowStates() {
   const mine = new Awareness(new Y.Doc());
   for (const { update } of toWindows) applyAwarenessUpdate(mine, fromBase64(update), "peer");
@@ -103,7 +103,7 @@ describe("PresenceHub", () => {
     expect(Y.createRelativePositionFromJSON(cursor.head)).toEqual(
       Y.createRelativePositionFromJSON(original.head),
     );
-    expect(state.extra).toBeUndefined(); // 모르는 필드는 버린다
+    expect(state.extra).toBeUndefined(); // unknown fields are dropped
   });
 
   it("ignores cursors from non-members and for notes that are no longer shared", async () => {
@@ -118,7 +118,7 @@ describe("PresenceHub", () => {
   it("does not let one friend move or remove another friend's cursor", async () => {
     const other = friendWindow();
     await hub.onRemote(OTHER, NOTE, other.update());
-    // FRIEND 가 OTHER 의 커서 ID 로 "지움"을 보낸다
+    // FRIEND sends a "remove" using OTHER's cursor ID
     const forged = encodeAwarenessEntries([
       { clientID: other.awareness.clientID, clock: 99, state: null },
     ]);
@@ -180,10 +180,10 @@ describe("PresenceHub", () => {
 describe("parseAwarenessUpdate", () => {
   it("rejects malformed data and drops bad cursor positions", () => {
     expect(parseAwarenessUpdate(new Uint8Array([0xff, 0xff]))).toBeNull();
-    // 뒤에 쓰레기 바이트
+    // trailing garbage bytes
     const ok = encodeAwarenessEntries([{ clientID: 1, clock: 1, state: null }]);
     expect(parseAwarenessUpdate(new Uint8Array([...ok, 7]))).toBeNull();
-    // 상태 JSON 은 맞지만 커서 형식이 틀림 → 커서 없음으로
+    // valid state JSON but a malformed cursor → no cursor
     const weird = new Awareness(new Y.Doc());
     weird.setLocalState({ cursor: { anchor: { item: { client: "x" } }, head: 5 } });
     const parsed = parseAwarenessUpdate(encodeAwarenessUpdate(weird, [weird.clientID]));

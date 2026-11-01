@@ -82,7 +82,11 @@ describe("Urinote desktop app", () => {
     await a.$(".folder-chip.add").click();
     await a.$('input[name="name"]').setValue("Work");
     await a.keys("Enter");
-    await a.$("//button[contains(@class, 'folder-chip') and contains(@class, 'active') and text()='Work']").waitForExist();
+    await a
+      .$(
+        "//button[contains(@class, 'folder-chip') and contains(@class, 'active') and text()='Work']",
+      )
+      .waitForExist();
 
     await newNote(a, "Quarterly goals");
     expect(await titles(a)).toEqual(["Quarterly goals"]);

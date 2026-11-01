@@ -1,9 +1,9 @@
 import { NOTE_COLORS, type NoteColor } from "./note";
 
-/** 앱 설정 (E-01). 기기마다 따로 두고, 같은 기기의 모든 창(Hub·스티키)이 함께 쓴다 */
+/** App settings (E-01). Per device, shared by every window (hub and stickies) on it */
 export interface Settings {
   theme: Theme;
-  /** 새 메모 색상 */
+  /** Color of new notes */
   defaultColor: NoteColor;
   fontSize: FontSize;
   language: Language;
@@ -18,7 +18,7 @@ export type Theme = (typeof THEMES)[number];
 export const FONT_SIZES = ["small", "medium", "large", "xlarge"] as const;
 export type FontSize = (typeof FONT_SIZES)[number];
 
-/** 메모 본문 글자 크기 배율 */
+/** Scale factor for note text size */
 export const FONT_SCALE: Record<FontSize, number> = {
   small: 0.875,
   medium: 1,
@@ -36,7 +36,7 @@ export const DEFAULT_SETTINGS: Settings = {
 const oneOf = <T extends string>(values: readonly T[], value: unknown, fallback: T): T =>
   (values as readonly unknown[]).includes(value) ? (value as T) : fallback;
 
-/** 저장된 값(또는 가져온 파일)을 읽는다. 모르는 값은 기본값으로 */
+/** Reads stored values (or an imported file). Unknown values fall back to defaults */
 export function parseSettings(raw: unknown): Settings {
   const r = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
   return {

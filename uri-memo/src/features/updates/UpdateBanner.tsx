@@ -1,7 +1,7 @@
 import { useT } from "../../i18n";
 import { useUpdate } from "./updateStore";
 
-/** 새 버전 알림 (Hub 목록 위) */
+/** New version banner (above the hub list) */
 export function UpdateBanner() {
   const t = useT();
   const status = useUpdate((s) => s.status);

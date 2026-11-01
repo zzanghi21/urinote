@@ -3,12 +3,12 @@ import { t } from "../i18n";
 import { isDesktopApp, isLinux } from "./env";
 import { globalKey } from "./shortcuts";
 
-/** 트레이 메뉴 문구를 지금 언어로 바꾼다 (src-tauri/src/desktop.rs 의 메뉴 ID) */
+/** Sets tray menu labels in the current language (menu IDs from src-tauri/src/desktop.rs) */
 export async function updateTrayLabels() {
   if (!isDesktopApp) return;
   await invoke("tray_set_labels", {
     labels: {
-      // Linux 트레이(AppIndicator)는 단축키 표시를 지원하지 않는다
+      // the Linux tray (AppIndicator) can't show shortcuts
       new: isLinux ? t("새 메모") : t("새 메모") + "\t" + globalKey("N"),
       show_all: t("모든 메모 보이기"),
       hide_all: t("모든 메모 숨기기"),

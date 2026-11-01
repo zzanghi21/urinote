@@ -2,10 +2,10 @@ import type Database from "@tauri-apps/plugin-sql";
 import type { Note, NoteColor, NoteFilter } from "../../domain/note";
 import type { NoteRepository } from "../../domain/repository";
 
-/** src-tauri/src/lib.rs 의 DB_URL 과 같아야 한다 */
+/** Must match DB_URL in src-tauri/src/lib.rs */
 export const DB_URL = "sqlite:urinote.db";
 
-/** trigram 토크나이저는 3글자 이상부터 매칭되므로 짧은 검색어는 LIKE 로 처리한다 */
+/** The trigram tokenizer only matches 3+ characters, so shorter queries use LIKE */
 const FTS_MIN_QUERY = 3;
 
 interface NoteRow {

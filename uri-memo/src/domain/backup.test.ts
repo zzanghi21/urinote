@@ -10,7 +10,7 @@ import { docFromUpdates, plainTextFromDoc } from "./noteDoc";
 import { NoteService } from "./noteService";
 import { DEFAULT_SETTINGS } from "./settings";
 
-/** 기기 1대: 저장소 + 서비스 */
+/** One device: stores + services */
 function device() {
   const notes = new MemoryNoteRepository();
   const docs = new MemoryDocStore();
@@ -22,7 +22,7 @@ function device() {
     service,
     folders: new FolderService(folders, service),
     backup: new BackupService(notes, docs, folders),
-    /** 편집기에서 문단을 하나 입력한 것처럼 */
+    /** As if a paragraph was typed in the editor */
     async type(noteId: string, text: string) {
       const doc = docFromUpdates(await docs.load(noteId));
       let update: Uint8Array | null = null;
@@ -39,7 +39,7 @@ function device() {
   };
 }
 
-/** 파일로 저장했다가 읽은 것처럼 */
+/** As if saved to a file and read back */
 const roundTrip = (backup: object) => parseBackup(JSON.stringify(backup));
 
 describe("BackupService", () => {
@@ -72,7 +72,7 @@ describe("BackupService", () => {
     await a.type(note.id, "첫 줄");
     const file = roundTrip(await a.backup.export(DEFAULT_SETTINGS));
 
-    // 백업 뒤에 이어서 쓰고 색을 바꿨다
+    // kept writing after the backup and changed the color
     await a.type(note.id, "백업 뒤에 쓴 줄");
     await a.service.edit(note.id, { color: "pink" });
 
@@ -81,7 +81,7 @@ describe("BackupService", () => {
     expect(await a.text(note.id)).toBe("첫 줄\n백업 뒤에 쓴 줄");
     expect((await a.service.get(note.id))?.color).toBe("pink");
 
-    // 두 번 가져와도 같다
+    // importing twice gives the same result
     await a.backup.import(file);
     expect(await a.text(note.id)).toBe("첫 줄\n백업 뒤에 쓴 줄");
   });

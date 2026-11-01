@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { t } from "../i18n";
 import { isDesktopApp } from "./env";
 
-/** 저장 대화상자로 JSON 파일을 저장한다. 취소하면 false */
+/** Saves a JSON file through a save dialog. false if cancelled */
 export async function saveJsonFile(fileName: string, contents: string): Promise<boolean> {
   if (isDesktopApp) {
     return invoke<boolean>("backup_save", {
@@ -11,7 +11,7 @@ export async function saveJsonFile(fileName: string, contents: string): Promise<
       contents,
     });
   }
-  // 브라우저 미리보기: 다운로드
+  // browser preview: download
   const url = URL.createObjectURL(new Blob([contents], { type: "application/json" }));
   const a = Object.assign(document.createElement("a"), { href: url, download: fileName });
   a.click();
@@ -19,7 +19,7 @@ export async function saveJsonFile(fileName: string, contents: string): Promise<
   return true;
 }
 
-/** 열기 대화상자로 JSON 파일을 읽는다. 취소하면 null */
+/** Reads a JSON file through an open dialog. null if cancelled */
 export async function openJsonFile(): Promise<string | null> {
   if (isDesktopApp)
     return invoke<string | null>("backup_open", { filterName: t("Urinote 백업 (JSON)") });

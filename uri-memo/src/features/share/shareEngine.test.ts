@@ -7,7 +7,7 @@ import { membershipBytes, type SignedMembership } from "./membership";
 import { decodeMessage, encodeMessage, type SyncMessage } from "./protocol";
 import { MAX_INBOX_PER_PEER, ShareEngine, type NoteBridge } from "./shareEngine";
 
-/** 테스트용 서명: 기기마다 비밀값을 두고 HMAC 처럼 동작한다 (위조 불가) */
+/** Test signatures: a secret per device, HMAC-like (cannot be forged) */
 const secrets = new Map<string, string>();
 async function hmac(signer: string, data: Uint8Array) {
   const key = new TextEncoder().encode(secrets.get(signer) ?? "");
@@ -66,7 +66,7 @@ class Device {
     });
   }
 
-  /** 사용자가 편집기에서 입력한 것처럼 문서를 바꾸고 엔진에 알린다 */
+  /** Changes the document as if typed in the editor and notifies the engine */
   async type(noteId: string, text: string) {
     let d = this.docs.get(noteId);
     if (!d) this.docs.set(noteId, (d = new Y.Doc()));
@@ -94,7 +94,7 @@ class Device {
   }
 }
 
-/** 기기 사이 연결. 메시지는 실제처럼 인코딩·디코딩해 순서대로 비동기 전달한다 */
+/** Links between devices. Messages are encoded/decoded like the real thing and delivered asynchronously in order */
 class Network {
   devices = new Map<string, Device>();
   links = new Set<string>();
@@ -170,7 +170,7 @@ describe("ShareEngine", () => {
     await net.settle();
 
     expect((await editor.shares.inbox()).map((i) => i.noteId)).toEqual([NOTE]);
-    expect(editor.text(NOTE)).toBe(""); // 수락 전에는 메모를 만들지 않는다
+    expect(editor.text(NOTE)).toBe(""); // no note is created before accepting
 
     await editor.engine.acceptOffer(NOTE);
     await net.settle();
@@ -197,7 +197,7 @@ describe("ShareEngine", () => {
     await editor.type(NOTE, "우유");
     await net.settle();
     expect(owner.text(NOTE)).toBe("장보기\n우유");
-    expect(viewer.text(NOTE)).toBe("장보기\n우유"); // 소유자가 보기 전용 기기에 전달
+    expect(viewer.text(NOTE)).toBe("장보기\n우유"); // the owner relays to the view-only device
   });
 
   it("merges edits made while apart when the devices meet again", async () => {
@@ -223,9 +223,9 @@ describe("ShareEngine", () => {
     net.disconnect(owner, viewer);
 
     await owner.type(NOTE, "A의 새 내용");
-    await net.connect(owner, editor); // A·B 만남
+    await net.connect(owner, editor); // A and B meet
     net.disconnect(owner, editor);
-    await net.connect(editor, viewer); // B·C 만남 (A 없음)
+    await net.connect(editor, viewer); // B and C meet (A absent)
 
     expect(viewer.text(NOTE)).toContain("A의 새 내용");
   });
@@ -235,7 +235,7 @@ describe("ShareEngine", () => {
     await net.connect(owner, viewer);
     await shareToAll();
 
-    // 조작된 클라이언트가 보기 전용인데도 편집을 보낸다
+    // a tampered client sends edits despite being view-only
     const rogue = new Y.Doc();
     Y.applyUpdate(rogue, Y.encodeStateAsUpdate(viewer.docs.get(NOTE)!));
     let update: Uint8Array | null = null;
@@ -247,7 +247,7 @@ describe("ShareEngine", () => {
     await net.settle();
 
     expect(owner.text(NOTE)).not.toContain("몰래");
-    // 보기 전용 기기는 자기 문서를 다른 기기에 보내지도 않는다
+    // view-only devices don't even send their document to others
     await viewer.engine.onLocalUpdate(NOTE, update!);
     await net.settle();
     expect(owner.text(NOTE)).not.toContain("몰래");
@@ -260,7 +260,7 @@ describe("ShareEngine", () => {
     await shareToAll();
     const current = (await editor.shares.get(NOTE))!.signed;
 
-    // 편집자가 자기를 owner 로 바꾼 목록을 소유자 서명 없이 만든다
+    // an editor makes a list naming itself owner, without the owner's signature
     const forged: SignedMembership = {
       membership: {
         ...current.membership,
@@ -277,7 +277,7 @@ describe("ShareEngine", () => {
       current.membership.version,
     );
 
-    // 예전 버전을 다시 보내도 무시한다
+    // resending an old version is ignored
     await owner.engine.updateMembers(NOTE, current.membership.members);
     await net.settle();
     const latest = (await viewer.shares.get(NOTE))!.signed.membership.version;
@@ -298,7 +298,7 @@ describe("ShareEngine", () => {
     );
     await net.settle();
     expect((await viewer.shares.get(NOTE))!.status).toBe("left");
-    expect(viewer.spaces.get(NOTE)).toBeNull(); // 받은 사본은 개인 메모로 남는다
+    expect(viewer.spaces.get(NOTE)).toBeNull(); // received copies remain as personal notes
 
     await editor.type(NOTE, "내보낸 뒤 내용");
     await net.settle();
@@ -339,7 +339,7 @@ describe("ShareEngine", () => {
     expect((await editor.shares.get(NOTE))!.status).toBe("ended");
     expect((await viewer.shares.get(NOTE))!.status).toBe("active");
 
-    await net.connect(editor, viewer); // 소유자 없이 편집자에게서 전해 듣는다
+    await net.connect(editor, viewer); // hears it from an editor, without the owner
     expect((await viewer.shares.get(NOTE))!.status).toBe("ended");
     expect(viewer.spaces.get(NOTE)).toBeNull();
   });
@@ -354,7 +354,7 @@ describe("ShareEngine", () => {
     await net.settle();
     await editor.engine.acceptOffer(NOTE);
     net.disconnect(owner, editor);
-    await net.connect(owner, editor); // hello 교환 시 예전 종료 목록이 오가도
+    await net.connect(owner, editor); // even if an old ended list is exchanged during hello
     expect((await owner.shares.get(NOTE))!.status).toBe("active");
     expect((await editor.shares.get(NOTE))!.status).toBe("active");
   });
@@ -382,7 +382,7 @@ describe("ShareEngine", () => {
     await net.settle();
     expect(await editor.shares.inbox()).toHaveLength(MAX_INBOX_PER_PEER);
 
-    // 답하면 자리가 생긴다. 같은 메모의 새 제안은 개수와 상관없이 덮어쓴다
+    // answering frees a slot; a new offer for the same note overwrites regardless of the count
     await editor.engine.declineOffer("n0");
     await owner.type("n99", "새 메모");
     await owner.engine.share("n99", [{ id: editor.id, name: editor.name, role: "editor" }]);
@@ -406,7 +406,7 @@ describe("protocol (sync messages)", () => {
           issuedAt: 1,
           members: [
             { id: "a", name: "A", role: "owner" },
-            { id: "b", name: "B", role: "owner" }, // 소유자가 둘
+            { id: "b", name: "B", role: "owner" }, // two owners
           ],
         },
       },

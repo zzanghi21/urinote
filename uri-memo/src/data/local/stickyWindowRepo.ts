@@ -1,7 +1,7 @@
 import Database from "@tauri-apps/plugin-sql";
 import { DB_URL } from "./sqliteRepo";
 
-/** 기기별 스티키 창 상태 (서버와 동기화하지 않는다). 위치·크기는 논리 픽셀. */
+/** Per-device sticky window state (never synced). Position and size in logical pixels. */
 export interface StickyWindowState {
   noteId: string;
   x: number | null;
@@ -72,7 +72,7 @@ export class StickyWindowRepository {
     return rows[0] ? toState(rows[0]) : null;
   }
 
-  /** 열려 있던 스티키 중 메모가 아직 휴지통에 없는 것 */
+  /** Stickies that were open and whose note is not in the trash */
   async listOpen(): Promise<StickyWindowState[]> {
     const rows = await this.db.select<Row[]>(
       `SELECT s.* FROM sticky_windows s JOIN notes n ON n.id = s.note_id
@@ -83,7 +83,7 @@ export class StickyWindowRepository {
 
   private queue: Promise<unknown> = Promise.resolve();
 
-  /** 이동·크기 변경 저장이 겹쳐도 값이 유실되지 않도록 순서대로 실행한다 */
+  /** Runs saves in order so overlapping move/resize saves don't lose values */
   update(noteId: string, patch: Partial<Omit<StickyWindowState, "noteId">>) {
     const run = () => this.write(noteId, patch);
     const result = this.queue.then(run, run);

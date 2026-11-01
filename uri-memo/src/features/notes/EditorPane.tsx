@@ -153,7 +153,7 @@ export function EditorPane() {
         )}
       </header>
 
-      {/* 소유자는 이 기록으로 아직 못 만난 멤버에게 종료를 전하므로 지우지 않는다 */}
+      {/* The owner keeps this record to tell members not met yet that sharing ended */}
       {share && share.status !== "active" && share.signed.membership.owner !== myId && (
         <div className="share-notice" role="status">
           <span>
@@ -178,7 +178,7 @@ export function EditorPane() {
   );
 }
 
-/** 지금 연결되어 함께 보고 있을 수 있는 멤버 (커서 색과 같은 색) */
+/** Members connected now who may be viewing together (same color as their cursor) */
 function PresenceAvatars({ members }: { members: Member[] }) {
   const t = useT();
   const contacts = useShare((s) => s.contacts);

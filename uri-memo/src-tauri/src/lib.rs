@@ -44,8 +44,8 @@ fn migrations() -> Vec<Migration> {
     ]
 }
 
-/// 오류 기록: 앱 로그 폴더의 urinote.log (최대 1MB × 3개). 우리 코드와 화면(webview)은 정보 이상,
-/// 라이브러리는 경고 이상만 남긴다. 메모 내용은 기록하지 않는다.
+/// Error log: urinote.log in the app log folder (up to 1 MB × 3). Info and above for our code and the
+/// webview, warnings and above for libraries. Note contents are never logged.
 fn log_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
     use tauri_plugin_log::{RotationStrategy, Target, TargetKind, TimezoneStrategy};
     tauri_plugin_log::Builder::new()
@@ -67,13 +67,13 @@ fn log_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 pub fn run() {
     let builder = tauri::Builder::default();
 
-    // 단일 인스턴스 플러그인은 가장 먼저 등록해야 한다
+    // the single-instance plugin must be registered first
     #[cfg(desktop)]
     let builder = desktop::plugins(builder);
 
     let builder = builder.plugin(log_plugin());
 
-    // 친구 공유 (같은 Wi-Fi P2P), 메모 알림
+    // friend sharing (same-Wi-Fi P2P), reminders, backup files
     #[cfg(desktop)]
     let builder = backup::init(reminders::init(p2p::init(builder))).invoke_handler(tauri::generate_handler![
         p2p::p2p_start,
@@ -101,7 +101,7 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
-            // 프런트엔드가 DB 를 열어 마이그레이션하기 전에: 옛 앱 ID 데이터 이전 → 버전 변경 시 백업
+            // before the frontend opens the DB and migrates: move data from the old app ID → back up on version change
             legacy::run(app);
             db_backup::run(app);
 
@@ -118,7 +118,7 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // Hub 창을 닫으면 종료하지 않고 트레이로 숨긴다
+            // closing the hub window hides it to the tray instead of quitting
             if window.label() == "main" {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();

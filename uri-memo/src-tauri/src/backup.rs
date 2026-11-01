@@ -1,19 +1,19 @@
-//! JSON 내보내기·가져오기 파일 (E-02, 데스크톱).
+//! Files for JSON export / import (E-02, desktop).
 //!
-//! 파일 위치는 사용자가 저장·열기 대화상자에서 고른다. 대화상자를 Rust 에서 띄우므로
-//! 웹뷰 쪽은 임의 경로의 파일을 읽거나 쓸 수 없다.
+//! The user picks the location in a save/open dialog. The dialog is shown from Rust, so the
+//! webview cannot read or write arbitrary paths.
 
 use tauri::{AppHandle, Builder, Runtime};
 use tauri_plugin_dialog::DialogExt;
 
-/// 이보다 큰 파일은 읽지 않는다 (메모 10만 개도 충분한 크기)
+/// Larger files are not read (plenty for 100,000 notes)
 const MAX_BACKUP_BYTES: u64 = 200 * 1024 * 1024;
 
 pub fn init<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     builder.plugin(tauri_plugin_dialog::init())
 }
 
-/// 저장 대화상자를 띄워 저장한다. 사용자가 취소하면 false
+/// Shows a save dialog and writes the file. false if the user cancels
 #[tauri::command]
 pub(crate) async fn backup_save<R: Runtime>(
     app: AppHandle<R>,
@@ -35,7 +35,7 @@ pub(crate) async fn backup_save<R: Runtime>(
     Ok(true)
 }
 
-/// 열기 대화상자를 띄워 파일 내용을 읽는다. 사용자가 취소하면 None
+/// Shows an open dialog and reads the file. None if the user cancels
 #[tauri::command]
 pub(crate) async fn backup_open<R: Runtime>(
     app: AppHandle<R>,

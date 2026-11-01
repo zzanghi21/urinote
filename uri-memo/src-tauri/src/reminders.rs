@@ -1,8 +1,8 @@
-//! 메모 알림 (N-01, 데스크톱).
+//! Note reminders (N-01, desktop).
 //!
-//! Hub 창이 예약된 알림 목록 전체를 넘기면(`reminders_set`), 가장 가까운 알림 시각까지 기다렸다가
-//! OS 알림을 띄우고 Hub 에 `reminder://due` 를 보낸다. Hub 는 그 메모를 스티키 창으로 열고 알림을 지운다.
-//! 앱이 꺼져 있던 동안 지난 알림은 Hub 가 시작할 때 "놓친 알림"으로 따로 보여 준다.
+//! The hub window passes the whole list of scheduled reminders (`reminders_set`); this waits until
+//! the nearest one, shows an OS notification and sends `reminder://due` to the hub, which opens the note as a sticky window and clears the reminder.
+//! Reminders that passed while the app was closed are shown by the hub at startup as "missed".
 
 use std::{
     collections::HashSet,
@@ -15,7 +15,7 @@ use tauri_plugin_notification::NotificationExt;
 use tokio::sync::watch;
 
 const EVENT_DUE: &str = "reminder://due";
-/// 절전 후 깨어났을 때 늦지 않게, 한 번에 길게 자지 않고 시계를 다시 본다
+/// Never sleep long at once and re-check the clock, so reminders aren't late after waking from sleep
 const MAX_SLEEP: Duration = Duration::from_secs(30);
 const MAX_REMINDERS: usize = 10_000;
 const MAX_TEXT: usize = 200;
@@ -24,7 +24,7 @@ const MAX_TEXT: usize = 200;
 #[serde(rename_all = "camelCase")]
 pub struct Reminder {
     pub note_id: String,
-    /// Unix 밀리초
+    /// Unix milliseconds
     pub at: i64,
     pub title: String,
     pub body: String,
@@ -40,7 +40,7 @@ pub fn init<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(RemindersState { tx: watch::channel(Vec::new()).0 })
 }
 
-/// 앱 시작 시 한 번: 알림 감시 작업을 띄운다
+/// Once at app startup: spawns the reminder task
 pub fn start<R: Runtime>(app: &AppHandle<R>) {
     let rx = app.state::<RemindersState>().tx.subscribe();
     tauri::async_runtime::spawn(run(app.clone(), rx));
@@ -81,8 +81,8 @@ async fn run<R: Runtime>(app: AppHandle<R>, mut rx: watch::Receiver<Vec<Reminder
     }
 }
 
-/// 지금 알릴 것과 다음에 깰 시각. 이미 알린 것은 목록에서 빠질 때까지 다시 알리지 않는다
-/// (Hub 가 알림을 지운 목록을 다시 보내기 전에 깨어나도 두 번 울리지 않게).
+/// What to fire now and when to wake next. Fired reminders don't fire again until they leave the list
+/// (so nothing fires twice if this wakes before the hub sends the cleared list).
 fn plan(list: &[Reminder], fired: &mut HashSet<Reminder>, now: i64) -> (Vec<Reminder>, Option<i64>) {
     fired.retain(|r| list.contains(r));
     let mut due = Vec::new();
@@ -138,11 +138,11 @@ mod tests {
         assert_eq!(due, vec![r("a", 100)]);
         assert_eq!(next, Some(200));
 
-        // Hub 가 아직 "a" 를 지우지 않은 목록으로 다시 깨도 두 번 알리지 않는다
+        // waking again with a list where the hub hasn't removed "a" yet doesn't fire twice
         let (due, _) = plan(&list, &mut fired, 160);
         assert!(due.is_empty());
 
-        // 같은 메모에 새 시각으로 다시 예약하면 다시 알린다
+        // rescheduling the same note with a new time fires again
         let list = vec![r("a", 400), r("b", 300), r("c", 200)];
         let (due, next) = plan(&list, &mut fired, 450);
         assert_eq!(due.len(), 3);

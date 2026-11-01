@@ -5,7 +5,7 @@ import { initSettings } from "./features/settings/settingsStore";
 import { initLogging } from "./platform/logging";
 import "./App.css";
 
-/** 스티키 창은 같은 번들을 ?sticky=<noteId> 로 연다 */
+/** Sticky windows open the same bundle with ?sticky=<noteId> */
 const stickyNoteId = new URLSearchParams(window.location.search).get("sticky");
 
 async function render() {

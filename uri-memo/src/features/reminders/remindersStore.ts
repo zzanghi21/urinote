@@ -10,10 +10,10 @@ import { openSticky } from "../../platform/stickyWindows";
 import { useNotes } from "../notes/notesStore";
 
 /**
- * 메모 알림 (Hub 창 전용, N-01 · DESIGN.md 4.7).
- * - 시작할 때 지난 알림은 "놓친 알림"으로 한 번 보여 주고 지운다
- * - 남은 알림 목록을 Rust 스케줄러에 넘기고, 메모가 바뀔 때마다 다시 넘긴다
- * - 알림 시각이 되면 그 메모를 스티키 창으로 열고 알림을 지운다 (한 번만 울림)
+ * Note reminders (hub window only, N-01 · DESIGN.md 4.7).
+ * - reminders already past at startup are shown once as "missed" and cleared
+ * - upcoming reminders are passed to the Rust scheduler, again whenever notes change
+ * - when one is due, its note opens as a sticky window and the reminder is cleared (fires once)
  */
 
 const SYNC_DEBOUNCE_MS = 300;
@@ -28,7 +28,7 @@ interface RemindersState {
   missed: MissedReminder[];
   init(service: NoteService): Promise<void>;
   dismissMissed(id: string): void;
-  /** 놓친 알림의 메모를 연다 */
+  /** Opens the note of a missed reminder */
   openMissed(id: string): Promise<void>;
 }
 
@@ -79,7 +79,7 @@ export const useReminders = create<RemindersState>((set, get) => {
           await clear(noteId);
         })();
       });
-      // 메모 목록이 바뀔 때마다 (스티키 창에서의 변경 포함) 예약을 다시 넘긴다
+      // resend the schedule whenever the note list changes (including changes from sticky windows)
       useNotes.subscribe((s, prev) => {
         if (s.notes !== prev.notes) scheduleSync();
       });

@@ -12,7 +12,7 @@ import {
   toLocalInput,
 } from "./reminder";
 
-/** 2026-10-30 (금) 14:30 (기기 시간대) */
+/** 2026-10-30 (Fri) 14:30 (device time zone) */
 const NOW = new Date(2026, 9, 30, 14, 30).getTime();
 
 describe("reminder helpers", () => {
@@ -33,7 +33,7 @@ describe("reminder helpers", () => {
     ]);
     expect(presets.every((p) => p.at > NOW)).toBe(true);
     expect(new Date(presets[3].at)).toEqual(new Date(2026, 10, 2, 9, 0));
-    // 저녁 6시가 1시간 안쪽이거나 지났으면 뺀다
+    // drop 6 PM if it is less than an hour away or already past
     expect(
       reminderPresets(new Date(2026, 9, 30, 17, 30).getTime()).map((p) => p.label),
     ).not.toContain("오늘 저녁 6시");

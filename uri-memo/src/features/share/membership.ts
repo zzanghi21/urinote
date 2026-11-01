@@ -1,5 +1,6 @@
 /**
- * 공유 멤버 목록 (DESIGN.md 4.9.6). 소유자 기기 키로 서명하므로 다른 멤버를 거쳐 전달돼도 위조할 수 없다.
+ * Share member list (DESIGN.md 4.9.6). Signed with the owner's device key, so it cannot be forged
+ * even when relayed through other members.
  */
 
 export type ShareRole = "owner" | "editor" | "viewer";
@@ -26,7 +27,7 @@ export interface SignedMembership {
   signature: string;
 }
 
-/** 서명 대상 바이트. 키 순서에 흔들리지 않도록 배열 형태로 고정한다. */
+/** Bytes to sign. A fixed array shape so key order can't change them. */
 export function membershipBytes(m: Membership): Uint8Array {
   return new TextEncoder().encode(
     JSON.stringify([
@@ -53,7 +54,7 @@ const isRole = (v: unknown): v is ShareRole => v === "owner" || v === "editor" |
 const isStr = (v: unknown, max = 128): v is string =>
   typeof v === "string" && v.length > 0 && v.length <= max;
 
-/** 상대가 보낸 멤버 목록의 형식 검사 (서명 검사는 따로) */
+/** Validates the shape of a received member list (the signature is checked separately) */
 export function parseMembership(raw: unknown): Membership | null {
   if (typeof raw !== "object" || raw === null) return null;
   const m = raw as Record<string, unknown>;

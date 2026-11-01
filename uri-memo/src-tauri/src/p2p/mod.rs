@@ -1,5 +1,5 @@
-//! 친구 공유용 P2P 계층을 프런트엔드(ShareEngine)에 노출한다.
-//! 메시지 내용(공유 프로토콜)은 프런트엔드가 해석하고, 여기서는 전송·발견·서명만 한다.
+//! Exposes the P2P layer for friend sharing to the frontend (ShareEngine).
+//! The frontend interprets messages (the sharing protocol); this only handles transport, discovery and signing.
 
 mod node;
 
@@ -14,13 +14,13 @@ use tokio::sync::{mpsc, OnceCell};
 
 use node::{Node, NodeEvent, NodeOptions};
 
-/// 보안 저장소 항목 이름. 서비스 이름은 앱 identifier 를 써서, 테스트용 두 번째 인스턴스
-/// (tauri.dev2.conf.json) 가 다른 기기 키를 갖게 한다.
+/// Secure-store entry name. The service name is the app identifier, so the second test instance
+/// (tauri.dev2.conf.json) gets a different device key.
 const KEYRING_USER: &str = "p2p-device-key";
-/// 보안 저장소를 쓸 수 없을 때 기기 키를 두는 파일 (앱 로컬 데이터 폴더)
+/// File holding the device key when no secure store is available (app local data folder)
 const KEY_FILE: &str = "p2p-device-key";
 
-/// Hub 창의 ShareEngine 이 받는 이벤트
+/// Events received by the hub window's ShareEngine
 const EVENT_DISCOVERED: &str = "p2p://discovered";
 const EVENT_EXPIRED: &str = "p2p://expired";
 const EVENT_CONNECTED: &str = "p2p://connected";
@@ -60,11 +60,11 @@ fn node<'a>(state: &'a State<'_, P2pState>) -> Result<&'a Node> {
     state.node.get().context("P2P 가 시작되지 않았습니다")
 }
 
-/// 기기 비밀키를 읽거나 처음이면 만든다.
+/// Reads the device secret key, creating it the first time.
 ///
-/// OS 보안 저장소(Windows 자격 증명 관리자 / macOS 키체인 / Linux Secret Service)에 둔다.
-/// 보안 저장소가 없는 환경(키링 데몬이 없는 Linux 등)에서는 앱 데이터 폴더의 파일에 두고
-/// (Unix 에서는 나만 읽을 수 있게 0600), 그 뒤로는 계속 그 파일을 쓴다.
+/// Kept in the OS secure store (Windows Credential Manager / macOS Keychain / Linux Secret Service).
+/// Without a secure store (e.g. Linux without a keyring daemon) it goes into a file in the app data
+/// folder (0600 on Unix, readable only by the user), and that file is used from then on.
 fn device_key(service: &str, fallback: &Path) -> Result<SecretKey> {
     if fallback.exists() {
         return read_key_file(fallback);
@@ -87,7 +87,7 @@ fn keyring_key(service: &str) -> Result<SecretKey> {
         Err(keyring::Error::NoEntry) => {
             let key = SecretKey::generate();
             entry.set_password(&encode_hex(&key.to_bytes()))?;
-            // 저장소가 받아 주기만 하고 실제로는 저장하지 않는 경우를 걸러낸다
+            // catch stores that accept the write but don't actually persist it
             let stored = entry.get_password().context("저장한 기기 키를 다시 읽지 못했습니다")?;
             anyhow::ensure!(stored == encode_hex(&key.to_bytes()), "기기 키가 저장되지 않았습니다");
             Ok(key)
@@ -167,7 +167,7 @@ fn forward_events<R: Runtime>(app: AppHandle<R>, mut rx: mpsc::UnboundedReceiver
     });
 }
 
-/// P2P 를 시작하고 내 기기 ID 를 돌려준다. 여러 번 불러도 한 번만 시작한다.
+/// Starts P2P and returns my device ID. Starts only once even if called repeatedly.
 #[tauri::command]
 pub(crate) async fn p2p_start<R: Runtime>(
     app: AppHandle<R>,
@@ -180,7 +180,7 @@ pub(crate) async fn p2p_start<R: Runtime>(
             let (tx, rx) = mpsc::unbounded_channel();
             let service = app.config().identifier.clone();
             let fallback = app.path().app_local_data_dir()?.join(KEY_FILE);
-            // 보안 저장소 호출은 막힐 수 있으므로 (Linux D-Bus 등) 비동기 작업 밖에서 한다
+            // secure-store calls may block (Linux D-Bus etc.), so run them off the async runtime
             let key = tauri::async_runtime::spawn_blocking(move || device_key(&service, &fallback))
                 .await??;
             let node = Node::start(key, NodeOptions::default(), tx).await?;
@@ -201,20 +201,20 @@ pub(crate) fn p2p_set_contacts(state: State<'_, P2pState>, contacts: Vec<String>
     Ok(())
 }
 
-/// 친구 추가 모드. `name` 이 있으면 켜고 표시 이름을 광고, 없으면 끈다.
+/// Add-a-friend mode. With `name` it turns on and advertises the display name; without, it turns off.
 #[tauri::command]
 pub(crate) fn p2p_set_pairing(state: State<'_, P2pState>, name: Option<String>) -> CmdResult<()> {
     node(&state).map_err(err)?.set_pairing(name).map_err(err)
 }
 
-/// 기기 ID 로 연결 (mDNS 로 찾은 주소 사용)
+/// Connects by device ID (using the address found via mDNS)
 #[tauri::command]
 pub(crate) async fn p2p_connect(state: State<'_, P2pState>, peer: String) -> CmdResult<()> {
     let id = parse_id(&peer).map_err(err)?;
     node(&state).map_err(err)?.connect(id).await.map_err(err)
 }
 
-/// 연결 코드로 받은 주소(JSON)로 직접 연결하고 상대 기기 ID 를 돌려준다 (mDNS 가 막힌 네트워크용)
+/// Connects directly to an address (JSON) from a connection code and returns the peer's device ID (for networks blocking mDNS)
 #[tauri::command]
 pub(crate) async fn p2p_connect_addr(state: State<'_, P2pState>, addr: String) -> CmdResult<String> {
     let addr: EndpointAddr =
@@ -224,7 +224,7 @@ pub(crate) async fn p2p_connect_addr(state: State<'_, P2pState>, addr: String) -
     Ok(id.to_string())
 }
 
-/// 기기 표시 이름 기본값 (PC 이름). macOS 의 "MacBook-Pro.local" 은 ".local" 을 뗀다
+/// Default device display name (the PC name). Strips ".local" from macOS names like "MacBook-Pro.local"
 #[tauri::command]
 pub(crate) fn p2p_default_name() -> String {
     device_name(&gethostname::gethostname().to_string_lossy())
@@ -254,9 +254,9 @@ mod tests {
 
         let key = SecretKey::generate();
         write_key_file(&path, &key).unwrap();
-        // 파일이 있으면 보안 저장소를 보지 않고 파일의 키를 쓴다
+        // with a file present, its key is used without looking at the secure store
         assert_eq!(device_key("unused", &path).unwrap().to_bytes(), key.to_bytes());
-        // 이미 있는 파일을 덮어쓰지 않는다
+        // an existing file is never overwritten
         assert!(write_key_file(&path, &SecretKey::generate()).is_err());
 
         #[cfg(unix)]
@@ -269,7 +269,7 @@ mod tests {
     }
 }
 
-/// QR 로 보여 줄 내 연결 정보 (JSON)
+/// My connection info to show as a QR code (JSON)
 #[tauri::command]
 pub(crate) fn p2p_my_addr(state: State<'_, P2pState>) -> CmdResult<String> {
     serde_json::to_string(&node(&state).map_err(err)?.addr()).map_err(|e| e.to_string())
@@ -295,7 +295,7 @@ pub(crate) async fn p2p_connected(state: State<'_, P2pState>) -> CmdResult<Vec<S
     Ok(ids.iter().map(|id| id.to_string()).collect())
 }
 
-/// 내 기기 키로 서명 (멤버 목록 서명용). 입력·출력은 base64
+/// Signs with my device key (for member lists). Input and output are base64
 #[tauri::command]
 pub(crate) fn p2p_sign(state: State<'_, P2pState>, data: String) -> CmdResult<String> {
     let bytes = B64.decode(data).map_err(|e| e.to_string())?;
@@ -311,7 +311,7 @@ pub(crate) fn p2p_verify(signer: String, data: String, signature: String) -> Cmd
     Ok(node::verify(&id, &data, &sig))
 }
 
-/// 명령 목록은 lib.rs 의 invoke_handler 에 함께 등록한다 (Tauri 는 핸들러를 하나만 받는다)
+/// Commands are registered together in lib.rs's invoke_handler (Tauri accepts only one handler)
 pub fn init<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
     builder.manage(P2pState::default())
 }

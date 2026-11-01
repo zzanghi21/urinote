@@ -3,13 +3,13 @@ import { listen } from "@tauri-apps/api/event";
 import { fromBase64, toBase64 } from "../domain/noteDoc";
 
 /**
- * 같은 Wi-Fi P2P 계층 (src-tauri/src/p2p). 전송·발견·서명만 하고 메시지 해석은 ShareEngine 이 한다.
- * 데스크톱 앱에서만 쓸 수 있다 (isDesktopApp).
+ * Same-Wi-Fi P2P layer (src-tauri/src/p2p). Handles transport, discovery and signing only;
+ * ShareEngine interprets the messages. Desktop app only (isDesktopApp).
  */
 
 export interface PeerInfo {
   id: string;
-  /** 상대가 친구 추가 모드일 때만 있다 */
+  /** Present only while the peer is in Add-a-friend mode */
   name?: string;
 }
 
@@ -20,7 +20,7 @@ export type P2pEvent =
   | { type: "disconnected"; peer: PeerInfo }
   | { type: "message"; from: string; data: Uint8Array };
 
-/** P2P 를 시작하고 내 기기 ID 를 돌려준다 (여러 번 불러도 한 번만 시작) */
+/** Starts P2P and returns my device ID (starts only once even if called repeatedly) */
 export function startP2p(contacts: string[]): Promise<string> {
   return invoke("p2p_start", { contacts });
 }
@@ -29,7 +29,7 @@ export function setContacts(contacts: string[]): Promise<void> {
   return invoke("p2p_set_contacts", { contacts });
 }
 
-/** 친구 추가 모드: 이름을 주면 켜고 광고, null 이면 끈다 */
+/** Add-a-friend mode: on and advertising with a name, off with null */
 export function setPairing(name: string | null): Promise<void> {
   return invoke("p2p_set_pairing", { name });
 }
@@ -38,17 +38,17 @@ export function connectPeer(peer: string): Promise<void> {
   return invoke("p2p_connect", { peer });
 }
 
-/** 연결 코드로 받은 연결 정보로 직접 연결하고 상대 기기 ID 를 돌려준다 */
+/** Connects directly using a connection code's info and returns the peer's device ID */
 export function connectAddr(addr: string): Promise<string> {
   return invoke("p2p_connect_addr", { addr });
 }
 
-/** 기기 표시 이름 기본값 (PC 이름) */
+/** Default device display name (the PC name) */
 export function defaultDeviceName(): Promise<string> {
   return invoke("p2p_default_name");
 }
 
-/** QR 로 보여 줄 내 연결 정보 */
+/** My connection info, to show as a QR code */
 export function myAddr(): Promise<string> {
   return invoke("p2p_my_addr");
 }
@@ -77,7 +77,7 @@ export function verify(signer: string, data: Uint8Array, signature: Uint8Array):
   });
 }
 
-/** P2P 이벤트 구독 (Hub 창 전용). 해제 함수를 돌려준다. */
+/** Subscribes to P2P events (hub window only). Returns an unsubscribe function. */
 export async function onP2pEvent(handler: (event: P2pEvent) => void): Promise<() => void> {
   const unlisteners = await Promise.all([
     listen<PeerInfo>("p2p://discovered", (e) => handler({ type: "discovered", peer: e.payload })),
