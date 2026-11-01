@@ -36,7 +36,9 @@ export type SyncMessage =
   /** 실시간 편집 */
   | { t: "update"; noteId: string; update: string }
   /** 공유 나가기 알림 (멤버 → 소유자) */
-  | { t: "leave"; noteId: string };
+  | { t: "leave"; noteId: string }
+  /** 커서·선택 영역 (y-protocols awareness 업데이트). 저장하지 않고 다른 멤버에게 전하지 않는다 */
+  | { t: "awareness"; noteId: string; update: string };
 
 export type ShareMessage = PairMessage | SyncMessage;
 
@@ -109,6 +111,10 @@ export function decodeMessage(data: Uint8Array): ShareMessage | null {
         : null;
     case "leave":
       return isText(m.noteId, MAX_TOKEN) ? { t: m.t, noteId: m.noteId } : null;
+    case "awareness":
+      return isText(m.noteId, MAX_TOKEN) && isData(m.update, MAX_AWARENESS)
+        ? { t: m.t, noteId: m.noteId, update: m.update }
+        : null;
     default:
       return null;
   }
@@ -117,9 +123,11 @@ export function decodeMessage(data: Uint8Array): ShareMessage | null {
 const MAX_HELLO_SHARES = 500;
 /** Rust 계층의 프레임 상한(4MB)보다 작다 */
 const MAX_DATA = 4 * 1024 * 1024;
+/** 커서 상태는 작다. 큰 데이터로 창들을 바쁘게 만들지 못하게 따로 제한한다 */
+const MAX_AWARENESS = 16 * 1024;
 
-const isData = (value: unknown): value is string =>
-  typeof value === "string" && value.length <= MAX_DATA && /^[A-Za-z0-9+/]*={0,2}$/.test(value);
+const isData = (value: unknown, max = MAX_DATA): value is string =>
+  typeof value === "string" && value.length <= max && /^[A-Za-z0-9+/]*={0,2}$/.test(value);
 
 const isColor = (value: unknown): value is NoteColor =>
   (NOTE_COLORS as readonly unknown[]).includes(value);

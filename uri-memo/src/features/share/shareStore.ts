@@ -6,19 +6,28 @@ import * as p2p from "../../platform/p2p";
 import { PairingSession, type PairingView } from "./pairing";
 import type { InboxItem, ShareRecord } from "../../data/local/sharesRepo";
 import { fromBase64, toBase64 } from "../../domain/noteDoc";
-import { emitNoteChanged, onAnyDocUpdate, P2P_SOURCE } from "../../platform/events";
+import {
+  emitAwareness,
+  emitAwarenessRenew,
+  emitNoteChanged,
+  onAnyDocUpdate,
+  onAwarenessQuery,
+  onLocalAwareness,
+  P2P_SOURCE,
+} from "../../platform/events";
 import { useNotes } from "../notes/notesStore";
 import type { Member } from "./membership";
 import { createNoteBridge } from "./noteBridge";
+import { PresenceHub } from "./presence";
 import { decodeMessage, encodeMessage, type PairMessage, type SyncMessage } from "./protocol";
 import { ShareEngine, type Invitee } from "./shareEngine";
-import { DEVICE_ID_KEY } from "./viewOnly";
+import { DEVICE_ID_KEY, DEVICE_NAME_KEY } from "./viewOnly";
 
 /**
- * 친구 공유 (Hub 창 전용): P2P 시작, 근처 기기, 친구 등록·관리(S2), 메모 공유·동기화(S3).
+ * 친구 공유 (Hub 창 전용): P2P 시작, 근처 기기, 친구 등록·관리(S2), 메모 공유·동기화(S3),
+ * 함께 편집 중인 친구의 커서 표시(S4).
  */
 
-const DEVICE_NAME_KEY = "device_name";
 const CONNECT_CODE_PREFIX = "URINOTE-";
 
 export interface NearbyPeer {
@@ -86,6 +95,7 @@ export const useShare = create<ShareState>((set, get) => {
   let session: PairingSession | null = null;
   let starting: Promise<void> | null = null;
   let engine: ShareEngine | null = null;
+  let presence: PresenceHub | null = null;
   /** 엔진 작업은 도착 순서대로 하나씩 처리한다 (멤버 목록 갱신 → 동기화 요청 순서 보장) */
   let engineQueue: Promise<unknown> = Promise.resolve();
   const runEngine = (task: (e: ShareEngine) => Promise<unknown>) => {
@@ -153,9 +163,12 @@ export const useShare = create<ShareState>((set, get) => {
         set((s) => ({ connected: [...new Set([...s.connected, event.peer.id])] }));
         void repo?.touch(event.peer.id, Date.now());
         void runEngine((e) => e.onConnected(event.peer.id));
+        // 새로 연결된 친구에게 내 창들의 커서를 보낸다
+        emitAwarenessRenew();
         return;
       case "disconnected":
         set((s) => ({ connected: s.connected.filter((id) => id !== event.peer.id) }));
+        presence?.onDisconnected(event.peer.id);
         if (session?.peerId === event.peer.id && !session.finished) {
           void session.handle({ t: "pair-cancel", reason: "연결이 끊어졌습니다" });
         }
@@ -183,6 +196,14 @@ export const useShare = create<ShareState>((set, get) => {
     }
     if (message.t.startsWith("pair-")) {
       if (session?.peerId === from) await session.handle(message as PairMessage);
+      return;
+    }
+    // 친구 추가 화면이 열려 있으면 친구가 아닌 기기도 연결될 수 있다. 공유 메시지는 친구에게서만 받는다
+    if (!get().contacts.some((c) => c.deviceId === from)) return;
+    if (message.t === "awareness") {
+      await presence
+        ?.onRemote(from, message.noteId, message.update)
+        .catch((e: unknown) => console.error("[presence]", e));
       return;
     }
     await runEngine((e) => e.handle(from, message as SyncMessage));
@@ -228,6 +249,19 @@ export const useShare = create<ShareState>((set, get) => {
           notes: createNoteBridge(stores, refreshNotes),
           onChange: () => void reloadShares(),
         });
+        const hub = new PresenceHub({
+          myId,
+          shares: stores.shares,
+          connectedPeers: () => get().connected,
+          send: (peer, message) => p2p.sendTo(peer, encodeMessage(message)),
+          toWindows: (noteId, update) => emitAwareness(noteId, update, P2P_SOURCE),
+          nameOf: (id) => get().contacts.find((c) => c.deviceId === id)?.name,
+        });
+        presence = hub;
+        await onLocalAwareness((noteId, update) =>
+          void hub.onLocal(noteId, update).catch((e: unknown) => console.error("[presence]", e)),
+        );
+        await onAwarenessQuery((noteId) => hub.query(noteId));
       }
       await p2p.onP2pEvent(onEvent);
       // 내 창들(Hub·스티키)에서 생긴 편집을 친구 기기로 보낸다. 친구에게서 받은 것(p2p)은 제외

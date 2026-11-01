@@ -1,0 +1,27 @@
+/* 함께 편집 중인 친구의 커서 (CollaborationCaret). Hub·스티키 창 공통 */
+.collab-caret {
+  position: relative;
+  margin: 0 -1px;
+  border-left: 2px solid;
+  pointer-events: none;
+  word-break: normal;
+}
+
+.collab-caret-label {
+  position: absolute;
+  bottom: 100%;
+  left: -2px;
+  padding: 0 4px;
+  border-radius: 3px 3px 3px 0;
+  color: #fff;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.ProseMirror-yjs-selection {
+  border-radius: 2px;
+}

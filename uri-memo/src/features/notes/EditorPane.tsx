@@ -1,7 +1,8 @@
 import { ColorPicker } from "../../components/ColorPicker";
 import { isDesktopApp } from "../../platform/env";
 import { openSticky } from "../../platform/stickyWindows";
-import { roleOf } from "../share/membership";
+import { roleOf, type Member } from "../share/membership";
+import { presenceColor } from "../share/presence";
 import { useShare } from "../share/shareStore";
 import { formatNoteTime } from "./formatTime";
 import { NoteEditor } from "./NoteEditor";
@@ -28,9 +29,10 @@ export function EditorPane() {
   const activeShare = share?.status === "active" ? share.signed.membership : null;
   const myRole = activeShare && myId ? roleOf(activeShare, myId) : null;
   const viewOnly = myRole === "viewer";
-  const onlineMembers = activeShare
-    ? activeShare.members.filter((m) => m.id !== myId && connected.includes(m.id)).length
-    : 0;
+  const online = activeShare
+    ? activeShare.members.filter((m) => m.id !== myId && connected.includes(m.id))
+    : [];
+  const shared = activeShare !== null && myRole !== null;
 
   return (
     <section className={`editor-pane color-${note.color}`} aria-label="메모 편집">
@@ -73,6 +75,7 @@ export function EditorPane() {
               {formatNoteTime(note.updatedAt)} 수정
             </span>
             <ColorPicker value={note.color} onChange={(color) => edit(note.id, { color })} />
+            {shared && <PresenceAvatars members={online} />}
             {shareAvailable && (
               <button
                 type="button"
@@ -81,7 +84,7 @@ export function EditorPane() {
                 aria-label="친구와 공유"
                 title={
                   activeShare
-                    ? `공유 중 · ${activeShare.members.length}명 (지금 연결 ${onlineMembers}명)`
+                    ? `공유 중 · ${activeShare.members.length}명 (지금 연결 ${online.length}명)`
                     : "친구와 공유 (같은 Wi-Fi)"
                 }
               >
@@ -141,8 +144,38 @@ export function EditorPane() {
         key={`${note.id}:${viewOnly}`}
         noteId={note.id}
         readOnly={inTrash || viewOnly}
+        shared={shared && !inTrash}
         onSave={(changes) => edit(note.id, changes)}
       />
     </section>
+  );
+}
+
+/** 지금 연결되어 함께 보고 있을 수 있는 멤버 (커서 색과 같은 색) */
+function PresenceAvatars({ members }: { members: Member[] }) {
+  const contacts = useShare((s) => s.contacts);
+  if (members.length === 0) {
+    return (
+      <span className="presence-none" title="연결된 멤버가 없습니다. 다시 만나면 편집이 합쳐집니다">
+        혼자 편집 중
+      </span>
+    );
+  }
+  return (
+    <span className="presence-avatars" aria-label={`지금 연결된 멤버 ${members.length}명`}>
+      {members.map((m) => {
+        const name = contacts.find((c) => c.deviceId === m.id)?.name ?? m.name;
+        return (
+          <span
+            key={m.id}
+            className="presence-avatar"
+            style={{ backgroundColor: presenceColor(m.id) }}
+            title={`${name} · 연결됨`}
+          >
+            {[...name][0] ?? "?"}
+          </span>
+        );
+      })}
+    </span>
   );
 }

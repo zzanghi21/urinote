@@ -5,7 +5,7 @@ import { DOC_FIELD } from "../../domain/editorSchema";
 import { fromBase64, toBase64 } from "../../domain/noteDoc";
 import { membershipBytes, type SignedMembership } from "./membership";
 import { decodeMessage, encodeMessage, type SyncMessage } from "./protocol";
-import { ShareEngine, type NoteBridge } from "./shareEngine";
+import { MAX_INBOX_PER_PEER, ShareEngine, type NoteBridge } from "./shareEngine";
 
 /** 테스트용 서명: 기기마다 비밀값을 두고 HMAC 처럼 동작한다 (위조 불가) */
 const secrets = new Map<string, string>();
@@ -371,6 +371,23 @@ describe("ShareEngine", () => {
     const updates = net.log.filter((l) => l.t === "update").length;
     expect(updates).toBeLessThanOrEqual(4);
     expect(viewer.text(NOTE)).toContain("한 번만");
+  });
+
+  it("caps pending offers from one friend", async () => {
+    await net.connect(owner, editor);
+    for (let i = 0; i < MAX_INBOX_PER_PEER + 5; i++) {
+      await owner.type(`n${i}`, `메모 ${i}`);
+      await owner.engine.share(`n${i}`, [{ id: editor.id, name: editor.name, role: "editor" }]);
+    }
+    await net.settle();
+    expect(await editor.shares.inbox()).toHaveLength(MAX_INBOX_PER_PEER);
+
+    // 답하면 자리가 생긴다. 같은 메모의 새 제안은 개수와 상관없이 덮어쓴다
+    await editor.engine.declineOffer("n0");
+    await owner.type("n99", "새 메모");
+    await owner.engine.share("n99", [{ id: editor.id, name: editor.name, role: "editor" }]);
+    await net.settle();
+    expect((await editor.shares.inbox()).map((i) => i.noteId)).toContain("n99");
   });
 });
 

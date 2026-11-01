@@ -73,6 +73,59 @@ export async function onDocUpdateElsewhere(
   });
 }
 
+/**
+ * 커서·이름 표시(awareness). 창 → Hub: 내 커서 (source = 창 이름),
+ * Hub → 창: 친구 커서 (source = P2P_SOURCE)
+ */
+const AWARENESS_UPDATE = "awareness:update";
+/** 창 → Hub: 막 연 메모의 친구 커서를 보내 달라 */
+const AWARENESS_QUERY = "awareness:query";
+/** Hub → 창: 친구 기기가 새로 연결되었으니 내 커서를 다시 보내 달라 */
+const AWARENESS_RENEW = "awareness:renew";
+
+export function emitAwareness(noteId: string, update: string, source = windowLabel) {
+  if (!inTauri) return;
+  void emit(AWARENESS_UPDATE, { noteId, update, source } satisfies DocUpdatePayload);
+}
+
+/** 창용: 친구 커서. 등록이 끝난 뒤 resolve 된다 */
+export async function onPeerAwareness(
+  noteId: string,
+  handler: (update: string) => void,
+): Promise<() => void> {
+  if (!inTauri) return () => {};
+  return listen<DocUpdatePayload>(AWARENESS_UPDATE, (e) => {
+    if (e.payload.source === P2P_SOURCE && e.payload.noteId === noteId) handler(e.payload.update);
+  });
+}
+
+/** Hub 용: 내 창들의 커서 */
+export async function onLocalAwareness(
+  handler: (noteId: string, update: string) => void,
+): Promise<() => void> {
+  if (!inTauri) return () => {};
+  return listen<DocUpdatePayload>(AWARENESS_UPDATE, (e) => {
+    if (e.payload.source !== P2P_SOURCE) handler(e.payload.noteId, e.payload.update);
+  });
+}
+
+export function emitAwarenessQuery(noteId: string) {
+  if (inTauri) void emit(AWARENESS_QUERY, { noteId });
+}
+
+export async function onAwarenessQuery(handler: (noteId: string) => void) {
+  if (!inTauri) return () => {};
+  return listen<{ noteId: string }>(AWARENESS_QUERY, (e) => handler(e.payload.noteId));
+}
+
+export function emitAwarenessRenew() {
+  if (inTauri) void emit(AWARENESS_RENEW, {});
+}
+
+export function onAwarenessRenew(handler: () => void): () => void {
+  return subscribe(AWARENESS_RENEW, handler);
+}
+
 function subscribe<T>(event: string, handler: (payload: T) => void): () => void {
   if (!inTauri) return () => {};
   const unlisten = listen<T>(event, (e) => handler(e.payload));

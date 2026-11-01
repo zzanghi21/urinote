@@ -1,14 +1,17 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import { Selection } from "@tiptap/pm/state";
-import { ySyncPluginKey } from "@tiptap/y-tiptap";
+import { yXmlFragmentToProsemirrorJSON, ySyncPluginKey } from "@tiptap/y-tiptap";
 import type * as Y from "yjs";
 import { baseExtensions, DOC_FIELD } from "../../domain/editorSchema";
 import type { NoteEdit } from "../../domain/noteService";
 import { onAppEvent } from "../../platform/events";
 import { acquireDoc, flushAllDocs } from "./docSession";
 import { registerEditorFlush } from "./editorFlush";
+import { openPresence, type PresenceHandle } from "./presenceSession";
+import "./collab.css";
 
 /** 목록·검색용 텍스트 캐시 저장 간격. 본문 자체는 docSession 이 따로 저장한다. */
 const SAVE_DEBOUNCE_MS = 500;
@@ -17,39 +20,80 @@ interface Props {
   noteId: string;
   readOnly?: boolean;
   autoFocus?: boolean;
+  /** 친구와 공유 중이면 서로의 커서·이름을 보여 준다 */
+  shared?: boolean;
   onSave(edit: NoteEdit): void;
 }
 
+interface Opened {
+  doc: Y.Doc;
+  presence: PresenceHandle | null;
+}
+
 /** 메모 1개를 편집한다. 메모의 Yjs 문서를 연 뒤 편집기를 띄운다. */
-export function NoteEditor({ noteId, ...props }: Props) {
-  const [doc, setDoc] = useState<Y.Doc | null>(null);
+export function NoteEditor({ noteId, shared = false, ...props }: Props) {
+  const [opened, setOpened] = useState<Opened | null>(null);
 
   useEffect(() => {
-    let release: (() => void) | null = null;
+    let close: (() => void) | null = null;
     let cancelled = false;
-    void acquireDoc(noteId).then((handle) => {
-      if (cancelled) return handle.release();
-      release = handle.release;
-      setDoc(handle.doc);
-    });
+    void (async () => {
+      const handle = await acquireDoc(noteId);
+      const presence = shared ? await openPresence(noteId, handle.doc).catch(() => null) : null;
+      close = () => {
+        presence?.close();
+        handle.release();
+      };
+      if (cancelled) return close();
+      setOpened({ doc: handle.doc, presence });
+    })();
     return () => {
       cancelled = true;
-      release?.();
+      close?.();
     };
-  }, [noteId]);
+  }, [noteId, shared]);
 
-  if (!doc) return <div className="note-editor" />;
-  return <CollabEditor key={doc.guid} doc={doc} {...props} />;
+  if (!opened) return <div className="note-editor" />;
+  return (
+    <CollabEditor
+      key={`${opened.doc.guid}:${opened.presence?.awareness.clientID ?? ""}`}
+      {...opened}
+      {...props}
+    />
+  );
 }
 
 const getPlainText = (editor: Editor) => editor.getText({ blockSeparator: "\n" });
 
+/**
+ * 편집기 첫 내용을 Yjs 문서와 같게 만든다. 빈 문서로 시작하면 Collaboration 이 내용을 채울 때
+ * 커서 위치(1)를 그대로 옮겨, 체크리스트로 시작하는 메모에서 TextSelection 경고가 난다.
+ * 빈 문서는 그대로 둔다 (빈 문단을 Yjs 에 쓰면 친구 기기와 합칠 때 빈 줄이 겹칠 수 있다).
+ */
+function initialContent(doc: Y.Doc) {
+  const fragment = doc.getXmlFragment(DOC_FIELD);
+  return fragment.length > 0 ? yXmlFragmentToProsemirrorJSON(fragment) : undefined;
+}
+
+function caretElement(user: { name?: string; color?: string }) {
+  const caret = document.createElement("span");
+  caret.className = "collab-caret";
+  caret.style.borderColor = user.color ?? "transparent";
+  const label = document.createElement("span");
+  label.className = "collab-caret-label";
+  label.style.backgroundColor = user.color ?? "transparent";
+  label.textContent = user.name ?? "";
+  caret.append(label);
+  return caret;
+}
+
 function CollabEditor({
   doc,
+  presence,
   readOnly = false,
   autoFocus = true,
   onSave,
-}: Omit<Props, "noteId"> & { doc: Y.Doc }) {
+}: Omit<Props, "noteId" | "shared"> & Opened) {
   const timer = useRef<number | undefined>(undefined);
   const pending = useRef<(() => void) | null>(null);
   const onSaveRef = useRef(onSave);
@@ -64,7 +108,20 @@ function CollabEditor({
   };
 
   const editor = useEditor({
-    extensions: [...baseExtensions, Collaboration.configure({ document: doc, field: DOC_FIELD })],
+    extensions: [
+      ...baseExtensions,
+      Collaboration.configure({ document: doc, field: DOC_FIELD }),
+      ...(presence
+        ? [
+            CollaborationCaret.configure({
+              provider: { awareness: presence.awareness },
+              user: presence.user,
+              render: caretElement,
+            }),
+          ]
+        : []),
+    ],
+    content: initialContent(doc),
     editable: !readOnly,
     editorProps: { attributes: { class: "note-editor-content", spellcheck: "false" } },
     onCreate({ editor }) {

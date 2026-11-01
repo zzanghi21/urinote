@@ -13,7 +13,7 @@ import { emitNoteChanged, onNoteChangedElsewhere } from "../../platform/events";
 import { openSticky, showHub, STICKY_COLLAPSED_HEIGHT } from "../../platform/stickyWindows";
 import { flushAllDocs } from "../notes/docSession";
 import { flushPendingEdit } from "../notes/editorFlush";
-import { isViewOnly } from "../share/viewOnly";
+import { shareAccess, type ShareAccess } from "../share/viewOnly";
 import { NoteEditor } from "../notes/NoteEditor";
 import "./sticky.css";
 
@@ -31,7 +31,8 @@ export function StickyApp({ noteId }: { noteId: string }) {
   const [note, setNote] = useState<Note | null>(null);
   const [win, setWin] = useState<StickyWindowState>(() => defaultStickyState(noteId));
   const [menuOpen, setMenuOpen] = useState(false);
-  const [viewOnly, setViewOnly] = useState(false);
+  const [access, setAccess] = useState<ShareAccess>({ shared: false, viewOnly: false });
+  const { viewOnly } = access;
   const collapsed = useRef(false);
 
   const updateWindow = (patch: WindowPatch) => {
@@ -53,7 +54,7 @@ export function StickyApp({ noteId }: { noteId: string }) {
       collapsed.current = state.collapsed;
       setWin(state);
       setNote(loaded);
-      setViewOnly(await isViewOnly(stores, noteId));
+      setAccess(await shareAccess(stores, noteId));
       setService(svc);
     })();
   }, [noteId]);
@@ -105,7 +106,11 @@ export function StickyApp({ noteId }: { noteId: string }) {
         return;
       }
       setNote(latest);
-      setViewOnly(await isViewOnly(await openStores(), noteId));
+      const next = await shareAccess(await openStores(), noteId);
+      // 같은 값이면 상태를 그대로 두어 편집기를 다시 만들지 않는다
+      setAccess((prev) =>
+        prev.shared === next.shared && prev.viewOnly === next.viewOnly ? prev : next,
+      );
     });
   }, [noteId, service]);
 
@@ -232,6 +237,7 @@ export function StickyApp({ noteId }: { noteId: string }) {
             key={String(viewOnly)}
             noteId={noteId}
             readOnly={viewOnly}
+            shared={access.shared}
             autoFocus={note.plainText === "" && !viewOnly}
             onSave={(changes) => void edit(changes)}
           />

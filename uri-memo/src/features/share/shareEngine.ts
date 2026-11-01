@@ -61,6 +61,10 @@ export interface Invitee {
 /** Yjs 빈 업데이트(변경 없음)는 2바이트다 */
 const EMPTY_UPDATE_BYTES = 2;
 
+/** 아직 답하지 않은 공유 제안 상한 (전체 / 보낸 친구 1명당) */
+export const MAX_INBOX = 50;
+export const MAX_INBOX_PER_PEER = 10;
+
 export class ShareEngine {
   constructor(private readonly deps: EngineDeps) {}
 
@@ -251,6 +255,8 @@ export class ShareEngine {
         return this.onDocData(from, message.noteId, message.update);
       case "leave":
         return this.onLeave(from, message.noteId);
+      case "awareness":
+        return; // 커서는 PresenceHub 가 처리한다
     }
   }
 
@@ -299,6 +305,14 @@ export class ShareEngine {
     if (existing && existing.status === "active") {
       // 이미 공유 중이면 멤버 목록 갱신으로만 처리
       await this.onMembership(from, offer.signed);
+      return;
+    }
+    // 친구 한 명이 제안을 쏟아내 받은 목록을 채우지 못하게 한다 (같은 메모의 새 제안은 덮어쓴다)
+    const inbox = (await this.deps.shares.inbox()).filter((i) => i.noteId !== m.noteId);
+    if (
+      inbox.length >= MAX_INBOX ||
+      inbox.filter((i) => i.fromId === from).length >= MAX_INBOX_PER_PEER
+    ) {
       return;
     }
     await this.deps.shares.putInbox({
