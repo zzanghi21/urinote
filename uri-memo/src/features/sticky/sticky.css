@@ -103,6 +103,21 @@ html.sticky-mode #root {
   color: var(--danger);
 }
 
+.sticky-menu-reminder summary {
+  padding: 6px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.sticky-menu-reminder summary:hover {
+  background: var(--bg);
+}
+
+.sticky-menu-reminder[open] summary {
+  margin-bottom: 6px;
+}
+
 .sticky-body {
   position: relative;
   display: flex;

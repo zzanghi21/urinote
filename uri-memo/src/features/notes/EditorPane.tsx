@@ -1,6 +1,7 @@
 import { ColorPicker } from "../../components/ColorPicker";
 import { isDesktopApp } from "../../platform/env";
 import { openSticky } from "../../platform/stickyWindows";
+import { ReminderButton } from "../reminders/ReminderPicker";
 import { roleOf, type Member } from "../share/membership";
 import { presenceColor } from "../share/presence";
 import { useShare } from "../share/shareStore";
@@ -95,6 +96,10 @@ export function EditorPane() {
               </select>
             )}
             {shared && <PresenceAvatars members={online} />}
+            <ReminderButton
+              value={note.remindAt}
+              onChange={(at) => useNotes.getState().setReminder(note.id, at)}
+            />
             {shareAvailable && (
               <button
                 type="button"

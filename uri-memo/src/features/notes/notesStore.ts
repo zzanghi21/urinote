@@ -28,6 +28,8 @@ interface NotesState {
   createFolder(name: string): Promise<void>;
   renameFolder(id: string, name: string): Promise<void>;
   moveToFolder(id: string, folderId: string | null): Promise<void>;
+  /** 알림 시각 설정 (null 이면 해제) */
+  setReminder(id: string, remindAt: number | null): Promise<void>;
   /** 폴더만 지운다 (메모는 "폴더 없음"으로) */
   deleteFolder(id: string): Promise<void>;
   /** 검색어는 바로 반영하고 목록 조회는 디바운스한다 */
@@ -118,6 +120,12 @@ export const useNotes = create<NotesState>((set, get) => {
     async renameFolder(id, name) {
       if (!(await folderService?.rename(id, name))) return;
       await reloadFolders();
+    },
+
+    async setReminder(id, remindAt) {
+      await service().setReminder(id, remindAt);
+      emitNoteChanged(id);
+      await get().refresh();
     },
 
     async moveToFolder(id, folderId) {

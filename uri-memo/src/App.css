@@ -356,6 +356,16 @@ input:focus-visible {
   color: var(--danger);
 }
 
+.text-btn.primary {
+  background: var(--accent);
+  color: #2b2a27;
+}
+
+.text-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .color-picker {
   display: flex;
   gap: 4px;

@@ -50,6 +50,16 @@ export class NoteService {
     });
   }
 
+  /** 알림 시각 설정·해제. 내용이 바뀐 것은 아니므로 수정 시각(목록 순서)은 그대로 둔다 */
+  setReminder(id: string, remindAt: number | null) {
+    return this.mutate(id, (note) => ({ ...note, remindAt }), { touch: false });
+  }
+
+  /** 휴지통에 없는 메모 중 알림이 있는 것 */
+  async withReminders(): Promise<Note[]> {
+    return (await this.repo.list({ view: "all" })).filter((n) => n.remindAt !== null);
+  }
+
   trash(id: string) {
     return this.mutate(id, (note) => ({ ...note, deletedAt: this.now(), pinned: false }));
   }
@@ -152,11 +162,15 @@ export class NoteService {
     return result;
   }
 
-  private mutate(id: string, fn: (note: Note) => Note): Promise<Note | null> {
+  private mutate(
+    id: string,
+    fn: (note: Note) => Note,
+    { touch = true } = {},
+  ): Promise<Note | null> {
     return this.enqueue(async () => {
       const note = await this.repo.get(id);
       if (!note) return null;
-      const next = { ...fn(note), updatedAt: this.now(), dirty: true };
+      const next = { ...fn(note), updatedAt: touch ? this.now() : note.updatedAt, dirty: true };
       await this.repo.upsert(next);
       return next;
     });

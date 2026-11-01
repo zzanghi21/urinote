@@ -5,6 +5,7 @@ import { NoteService } from "./domain/noteService";
 import { EditorPane } from "./features/notes/EditorPane";
 import { useNotes } from "./features/notes/notesStore";
 import { Sidebar } from "./features/notes/Sidebar";
+import { useReminders } from "./features/reminders/remindersStore";
 import { SettingsDialog } from "./features/settings/SettingsDialog";
 import { FriendsDialog } from "./features/share/FriendsDialog";
 import { ShareDialog } from "./features/share/ShareDialog";
@@ -37,7 +38,8 @@ function App() {
             service,
             new FolderService(folders, service),
             window.matchMedia(TWO_PANE_QUERY).matches,
-          );
+          )
+          .then(() => useReminders.getState().init(service));
       })
       .then(() => (isDesktopApp ? restoreOpenStickies() : undefined))
       .catch((e: unknown) => setError(String(e)));

@@ -149,16 +149,6 @@
   margin-top: 12px;
 }
 
-.text-btn.primary {
-  background: var(--accent);
-  color: #2b2a27;
-}
-
-.text-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
 .pairing-overlay {
   position: absolute;
   inset: 0;

@@ -122,7 +122,7 @@ fn forward_events<R: Runtime>(app: AppHandle<R>, mut rx: mpsc::UnboundedReceiver
 
 /// P2P 를 시작하고 내 기기 ID 를 돌려준다. 여러 번 불러도 한 번만 시작한다.
 #[tauri::command]
-async fn p2p_start<R: Runtime>(
+pub(crate) async fn p2p_start<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, P2pState>,
     contacts: Vec<String>,
@@ -144,7 +144,7 @@ async fn p2p_start<R: Runtime>(
 }
 
 #[tauri::command]
-fn p2p_set_contacts(state: State<'_, P2pState>, contacts: Vec<String>) -> CmdResult<()> {
+pub(crate) fn p2p_set_contacts(state: State<'_, P2pState>, contacts: Vec<String>) -> CmdResult<()> {
     let contacts = contacts.iter().map(|c| parse_id(c)).collect::<Result<Vec<_>>>().map_err(err)?;
     node(&state).map_err(err)?.set_contacts(contacts);
     Ok(())
@@ -152,20 +152,20 @@ fn p2p_set_contacts(state: State<'_, P2pState>, contacts: Vec<String>) -> CmdRes
 
 /// 친구 추가 모드. `name` 이 있으면 켜고 표시 이름을 광고, 없으면 끈다.
 #[tauri::command]
-fn p2p_set_pairing(state: State<'_, P2pState>, name: Option<String>) -> CmdResult<()> {
+pub(crate) fn p2p_set_pairing(state: State<'_, P2pState>, name: Option<String>) -> CmdResult<()> {
     node(&state).map_err(err)?.set_pairing(name).map_err(err)
 }
 
 /// 기기 ID 로 연결 (mDNS 로 찾은 주소 사용)
 #[tauri::command]
-async fn p2p_connect(state: State<'_, P2pState>, peer: String) -> CmdResult<()> {
+pub(crate) async fn p2p_connect(state: State<'_, P2pState>, peer: String) -> CmdResult<()> {
     let id = parse_id(&peer).map_err(err)?;
     node(&state).map_err(err)?.connect(id).await.map_err(err)
 }
 
 /// 연결 코드로 받은 주소(JSON)로 직접 연결하고 상대 기기 ID 를 돌려준다 (mDNS 가 막힌 네트워크용)
 #[tauri::command]
-async fn p2p_connect_addr(state: State<'_, P2pState>, addr: String) -> CmdResult<String> {
+pub(crate) async fn p2p_connect_addr(state: State<'_, P2pState>, addr: String) -> CmdResult<String> {
     let addr: EndpointAddr =
         serde_json::from_str(&addr).map_err(|e| format!("잘못된 연결 정보: {e}"))?;
     let id = addr.id;
@@ -175,7 +175,7 @@ async fn p2p_connect_addr(state: State<'_, P2pState>, addr: String) -> CmdResult
 
 /// 기기 표시 이름 기본값 (PC 이름)
 #[tauri::command]
-fn p2p_default_name() -> String {
+pub(crate) fn p2p_default_name() -> String {
     std::env::var("COMPUTERNAME")
         .or_else(|_| std::env::var("HOSTNAME"))
         .unwrap_or_else(|_| "Urinote".to_string())
@@ -183,39 +183,39 @@ fn p2p_default_name() -> String {
 
 /// QR 로 보여 줄 내 연결 정보 (JSON)
 #[tauri::command]
-fn p2p_my_addr(state: State<'_, P2pState>) -> CmdResult<String> {
+pub(crate) fn p2p_my_addr(state: State<'_, P2pState>) -> CmdResult<String> {
     serde_json::to_string(&node(&state).map_err(err)?.addr()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-async fn p2p_send(state: State<'_, P2pState>, peer: String, data: String) -> CmdResult<()> {
+pub(crate) async fn p2p_send(state: State<'_, P2pState>, peer: String, data: String) -> CmdResult<()> {
     let id = parse_id(&peer).map_err(err)?;
     let bytes = B64.decode(data).map_err(|e| e.to_string())?;
     node(&state).map_err(err)?.send(id, bytes).await.map_err(err)
 }
 
 #[tauri::command]
-async fn p2p_disconnect(state: State<'_, P2pState>, peer: String) -> CmdResult<()> {
+pub(crate) async fn p2p_disconnect(state: State<'_, P2pState>, peer: String) -> CmdResult<()> {
     let id = parse_id(&peer).map_err(err)?;
     node(&state).map_err(err)?.disconnect(id).await;
     Ok(())
 }
 
 #[tauri::command]
-async fn p2p_connected(state: State<'_, P2pState>) -> CmdResult<Vec<String>> {
+pub(crate) async fn p2p_connected(state: State<'_, P2pState>) -> CmdResult<Vec<String>> {
     let ids = node(&state).map_err(err)?.connected().await;
     Ok(ids.iter().map(|id| id.to_string()).collect())
 }
 
 /// 내 기기 키로 서명 (멤버 목록 서명용). 입력·출력은 base64
 #[tauri::command]
-fn p2p_sign(state: State<'_, P2pState>, data: String) -> CmdResult<String> {
+pub(crate) fn p2p_sign(state: State<'_, P2pState>, data: String) -> CmdResult<String> {
     let bytes = B64.decode(data).map_err(|e| e.to_string())?;
     Ok(B64.encode(node(&state).map_err(err)?.sign(&bytes)))
 }
 
 #[tauri::command]
-fn p2p_verify(signer: String, data: String, signature: String) -> CmdResult<bool> {
+pub(crate) fn p2p_verify(signer: String, data: String, signature: String) -> CmdResult<bool> {
     let id = parse_id(&signer).map_err(err)?;
     let (Ok(data), Ok(sig)) = (B64.decode(data), B64.decode(signature)) else {
         return Ok(false);
@@ -223,23 +223,7 @@ fn p2p_verify(signer: String, data: String, signature: String) -> CmdResult<bool
     Ok(node::verify(&id, &data, &sig))
 }
 
+/// 명령 목록은 lib.rs 의 invoke_handler 에 함께 등록한다 (Tauri 는 핸들러를 하나만 받는다)
 pub fn init<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
     builder.manage(P2pState::default())
-}
-
-pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + Sync + 'static {
-    tauri::generate_handler![
-        p2p_start,
-        p2p_set_contacts,
-        p2p_set_pairing,
-        p2p_connect,
-        p2p_connect_addr,
-        p2p_default_name,
-        p2p_my_addr,
-        p2p_send,
-        p2p_disconnect,
-        p2p_connected,
-        p2p_sign,
-        p2p_verify,
-    ]
 }

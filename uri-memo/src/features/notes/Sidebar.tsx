@@ -1,5 +1,6 @@
 import type { NoteView } from "../../domain/note";
 import { OfferBanner } from "../share/ShareDialog";
+import { MissedBanner } from "../reminders/MissedBanner";
 import { useSettings } from "../settings/settingsStore";
 import { useShare } from "../share/shareStore";
 import { FolderBar } from "./FolderBar";
@@ -79,6 +80,7 @@ export function Sidebar({ searchRef }: { searchRef: React.RefObject<HTMLInputEle
         aria-label="메모 검색"
       />
 
+      <MissedBanner />
       <OfferBanner />
 
       <nav className="view-tabs" aria-label="보기">

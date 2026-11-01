@@ -9,6 +9,8 @@ import {
 } from "../../data/local/stickyWindowRepo";
 import type { Note } from "../../domain/note";
 import { NoteService, type NoteEdit } from "../../domain/noteService";
+import { formatReminder } from "../../domain/reminder";
+import { ReminderFields } from "../reminders/ReminderPicker";
 import { emitNoteChanged, onNoteChangedElsewhere } from "../../platform/events";
 import { openSticky, showHub, STICKY_COLLAPSED_HEIGHT } from "../../platform/stickyWindows";
 import { flushAllDocs } from "../notes/docSession";
@@ -121,6 +123,14 @@ export function StickyApp({ noteId }: { noteId: string }) {
     emitNoteChanged(noteId);
   };
 
+  const setReminder = async (remindAt: number | null) => {
+    const next = await service?.setReminder(noteId, remindAt);
+    if (!next) return;
+    setNote(next);
+    setMenuOpen(false);
+    emitNoteChanged(noteId);
+  };
+
   const newSticky = async () => {
     if (!service || !note) return;
     const created = await service.create(note.color);
@@ -219,6 +229,13 @@ export function StickyApp({ noteId }: { noteId: string }) {
               onChange={(e) => updateWindow({ opacity: Number(e.target.value) / 100 })}
             />
           </label>
+          <details className="sticky-menu-reminder">
+            <summary>{note.remindAt ? `⏰ ${formatReminder(note.remindAt)}` : "⏰ 알림"}</summary>
+            <ReminderFields
+              value={note.remindAt}
+              onChange={(at) => void setReminder(at)}
+            />
+          </details>
           <button type="button" className="sticky-menu-item" onClick={toggleCollapsed}>
             {win.collapsed ? "펼치기" : "접기"}
           </button>

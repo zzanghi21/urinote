@@ -1,0 +1,90 @@
+.reminder-wrap {
+  position: relative;
+}
+
+.reminder-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  width: 270px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+}
+
+.reminder-fields {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.reminder-current {
+  margin: 0;
+  font-weight: 600;
+}
+
+.reminder-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.reminder-presets .text-btn {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.reminder-custom {
+  display: flex;
+  gap: 6px;
+}
+
+.reminder-custom input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  color-scheme: inherit;
+  font: inherit;
+  font-size: 12px;
+}
+
+.reminder-error {
+  margin: 0;
+  color: var(--danger);
+}
+
+.reminder-fields > .danger {
+  justify-self: start;
+}
+
+/* 놓친 알림 (Hub 목록 위) */
+.missed-banner {
+  display: grid;
+  gap: 6px;
+  margin: 0 12px 8px;
+}
+
+.missed-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  font-size: 13px;
+}
+
+.missed-text {
+  flex: 1;
+  min-width: 0;
+}

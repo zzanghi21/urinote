@@ -6,6 +6,8 @@ use tauri_plugin_sql::{Migration, MigrationKind};
 mod desktop;
 #[cfg(desktop)]
 mod p2p;
+#[cfg(desktop)]
+mod reminders;
 
 pub const DB_URL: &str = "sqlite:urinote.db";
 
@@ -46,9 +48,23 @@ pub fn run() {
     #[cfg(desktop)]
     let builder = desktop::plugins(builder);
 
-    // 친구 공유 (같은 Wi-Fi P2P)
+    // 친구 공유 (같은 Wi-Fi P2P), 메모 알림
     #[cfg(desktop)]
-    let builder = p2p::init(builder).invoke_handler(p2p::handler());
+    let builder = reminders::init(p2p::init(builder)).invoke_handler(tauri::generate_handler![
+        p2p::p2p_start,
+        p2p::p2p_set_contacts,
+        p2p::p2p_set_pairing,
+        p2p::p2p_connect,
+        p2p::p2p_connect_addr,
+        p2p::p2p_default_name,
+        p2p::p2p_my_addr,
+        p2p::p2p_send,
+        p2p::p2p_disconnect,
+        p2p::p2p_connected,
+        p2p::p2p_sign,
+        p2p::p2p_verify,
+        reminders::reminders_set,
+    ]);
 
     builder
         .plugin(tauri_plugin_opener::init())
@@ -60,6 +76,8 @@ pub fn run() {
         .setup(|app| {
             #[cfg(desktop)]
             desktop::setup(app)?;
+            #[cfg(desktop)]
+            reminders::start(app.handle());
 
             #[cfg(mobile)]
             if let Some(hub) = app.get_webview_window("main") {

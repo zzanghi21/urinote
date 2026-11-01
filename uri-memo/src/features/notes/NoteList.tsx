@@ -1,4 +1,5 @@
 import { previewFromText } from "../../domain/note";
+import { formatReminder } from "../../domain/reminder";
 import { isDesktopApp } from "../../platform/env";
 import { openSticky } from "../../platform/stickyWindows";
 import { formatNoteTime } from "./formatTime";
@@ -56,6 +57,9 @@ export function NoteList() {
             <span className="note-card-time">
               {formatNoteTime(
                 view === "trash" ? (note.deletedAt ?? note.updatedAt) : note.updatedAt,
+              )}
+              {note.remindAt !== null && view !== "trash" && (
+                <span className="note-card-reminder"> · ⏰ {formatReminder(note.remindAt)}</span>
               )}
               {folderId === null && note.folderId && folderNames.get(note.folderId) && (
                 <span className="note-card-folder"> · {folderNames.get(note.folderId)}</span>
