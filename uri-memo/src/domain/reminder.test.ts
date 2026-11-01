@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MemoryDocStore } from "../data/local/memoryDocStore";
 import { MemoryNoteRepository } from "../data/local/memoryRepo";
+import { setLocale } from "../i18n";
 import { newNote } from "./note";
 import { NoteService } from "./noteService";
 import {
@@ -33,16 +34,29 @@ describe("reminder helpers", () => {
     expect(presets.every((p) => p.at > NOW)).toBe(true);
     expect(new Date(presets[3].at)).toEqual(new Date(2026, 10, 2, 9, 0));
     // 저녁 6시가 1시간 안쪽이거나 지났으면 뺀다
-    expect(reminderPresets(new Date(2026, 9, 30, 17, 30).getTime()).map((p) => p.label)).not.toContain(
-      "오늘 저녁 6시",
-    );
+    expect(
+      reminderPresets(new Date(2026, 9, 30, 17, 30).getTime()).map((p) => p.label),
+    ).not.toContain("오늘 저녁 6시");
   });
 
   it("formats relative days", () => {
     expect(formatReminder(new Date(2026, 9, 30, 18, 0).getTime(), NOW)).toBe("오늘 18:00");
     expect(formatReminder(new Date(2026, 9, 31, 9, 5).getTime(), NOW)).toBe("내일 09:05");
     expect(formatReminder(new Date(2026, 10, 2, 9, 0).getTime(), NOW)).toBe("11월 2일 (월) 09:00");
-    expect(formatReminder(new Date(2027, 0, 4, 9, 0).getTime(), NOW)).toBe("2027년 1월 4일 (월) 09:00");
+    expect(formatReminder(new Date(2027, 0, 4, 9, 0).getTime(), NOW)).toBe(
+      "2027년 1월 4일 (월) 09:00",
+    );
+  });
+
+  it("formats in English when the app language is English", () => {
+    setLocale("en");
+    try {
+      expect(formatReminder(new Date(2026, 9, 31, 9, 5).getTime(), NOW)).toBe("Tomorrow 09:05");
+      expect(formatReminder(new Date(2026, 10, 2, 9, 0).getTime(), NOW)).toBe("Mon, Nov 2 09:00");
+      expect(reminderPresets(NOW)[0].label).toBe("In 1 hour");
+    } finally {
+      setLocale("ko");
+    }
   });
 
   it("splits missed and upcoming reminders, ignoring the trash", () => {

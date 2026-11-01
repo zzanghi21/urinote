@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { create } from "zustand";
 import { openStores } from "../../data";
 import type { Contact, ContactsRepository } from "../../data/local/contactsRepo";
@@ -221,7 +222,7 @@ export const useShare = create<ShareState>((set, get) => {
         noteId: item.noteId,
         fromId: item.fromId,
         fromName:
-          contacts.get(item.fromId) ?? members.find((m) => m.id === item.fromId)?.name ?? "친구",
+          contacts.get(item.fromId) ?? members.find((m) => m.id === item.fromId)?.name ?? t("친구"),
         title: offer?.t === "offer" ? offer.title : "",
       };
     });
@@ -258,8 +259,9 @@ export const useShare = create<ShareState>((set, get) => {
           nameOf: (id) => get().contacts.find((c) => c.deviceId === id)?.name,
         });
         presence = hub;
-        await onLocalAwareness((noteId, update) =>
-          void hub.onLocal(noteId, update).catch((e: unknown) => console.error("[presence]", e)),
+        await onLocalAwareness(
+          (noteId, update) =>
+            void hub.onLocal(noteId, update).catch((e: unknown) => console.error("[presence]", e)),
         );
         await onAwarenessQuery((noteId) => hub.query(noteId));
       }
@@ -331,7 +333,7 @@ export const useShare = create<ShareState>((set, get) => {
     async requestPair(peerId, peerName) {
       if (session && !session.finished) return;
       set({ error: null });
-      const name = peerName ?? get().nearby[peerId]?.name ?? "상대 기기";
+      const name = peerName ?? get().nearby[peerId]?.name ?? t("상대 기기");
       const s = newSession((deps) => PairingSession.outgoing(deps, peerId, name));
       set({ pairing: s.view });
       try {

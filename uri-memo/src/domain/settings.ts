@@ -6,7 +6,11 @@ export interface Settings {
   /** 새 메모 색상 */
   defaultColor: NoteColor;
   fontSize: FontSize;
+  language: Language;
 }
+
+export const LANGUAGES = ["system", "ko", "en"] as const;
+export type Language = (typeof LANGUAGES)[number];
 
 export const THEMES = ["system", "light", "dark"] as const;
 export type Theme = (typeof THEMES)[number];
@@ -26,6 +30,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   defaultColor: "yellow",
   fontSize: "medium",
+  language: "system",
 };
 
 const oneOf = <T extends string>(values: readonly T[], value: unknown, fallback: T): T =>
@@ -38,5 +43,6 @@ export function parseSettings(raw: unknown): Settings {
     theme: oneOf(THEMES, r.theme, DEFAULT_SETTINGS.theme),
     defaultColor: oneOf(NOTE_COLORS, r.defaultColor, DEFAULT_SETTINGS.defaultColor),
     fontSize: oneOf(FONT_SIZES, r.fontSize, DEFAULT_SETTINGS.fontSize),
+    language: oneOf(LANGUAGES, r.language, DEFAULT_SETTINGS.language),
   };
 }

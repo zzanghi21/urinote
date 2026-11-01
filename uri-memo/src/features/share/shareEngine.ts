@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import type { NoteColor } from "../../domain/note";
 import { fromBase64, toBase64 } from "../../domain/noteDoc";
 import type { InboxItem, ShareRecord, SharesRepository } from "../../data/local/sharesRepo";
@@ -91,7 +92,8 @@ export class ShareEngine {
       { id: this.deps.myId, name: this.deps.myName(), role: "owner" },
       ...invitees.filter((i) => i.id !== this.deps.myId),
     ];
-    if (members.length > MAX_MEMBERS) throw new Error(`공유 인원은 최대 ${MAX_MEMBERS}대입니다`);
+    if (members.length > MAX_MEMBERS)
+      throw new Error(t("공유 인원은 최대 {max}대입니다", { max: MAX_MEMBERS }));
     const signed = await this.signMembership({
       noteId,
       // 종료했던 공유를 다시 시작해도 예전 "종료" 목록보다 새 버전이어야 한다
@@ -112,7 +114,8 @@ export class ShareEngine {
     const record = await this.requireShare(noteId);
     const old = record.signed.membership;
     this.assertOwner(old);
-    if (members.length > MAX_MEMBERS) throw new Error(`공유 인원은 최대 ${MAX_MEMBERS}대입니다`);
+    if (members.length > MAX_MEMBERS)
+      throw new Error(t("공유 인원은 최대 {max}대입니다", { max: MAX_MEMBERS }));
     const next = await this.signMembership({
       ...old,
       version: old.version + 1,

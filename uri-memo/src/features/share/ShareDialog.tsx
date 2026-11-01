@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useT } from "../../i18n";
+import { tRich } from "../../i18n/rich";
 import { useNotes } from "../notes/notesStore";
 import { MAX_MEMBERS, roleOf, type Member, type ShareRole } from "./membership";
 import { shortDeviceId, useShare } from "./shareStore";
@@ -13,6 +15,7 @@ const ROLE_LABEL: Record<ShareRole, string> = {
 
 /** 메모 1개의 공유 설정: 공유 시작 / 멤버 관리(소유자) / 나가기(멤버) */
 export function ShareDialog() {
+  const t = useT();
   const noteId = useShare((s) => s.shareDialogNoteId);
   const record = useShare((s) => (noteId ? s.shares[noteId] : undefined));
   const myId = useShare((s) => s.myId);
@@ -28,17 +31,18 @@ export function ShareDialog() {
 
   return (
     <div className="dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <section className="dialog" role="dialog" aria-label="메모 공유" aria-modal>
+      <section className="dialog" role="dialog" aria-label={t("메모 공유")} aria-modal>
         <header className="dialog-header">
-          <h2>'{title || "새 메모"}' 공유</h2>
-          <button type="button" className="icon-btn" onClick={close} aria-label="닫기">
+          <h2>{t("'{title}' 공유", { title: title || t("새 메모") })}</h2>
+          <button type="button" className="icon-btn" onClick={close} aria-label={t("닫기")}>
             ×
           </button>
         </header>
-        {error && <p className="dialog-error">{error}</p>}
+        {error && <p className="dialog-error">{t(error)}</p>}
         <p className="dialog-hint">
-          같은 Wi-Fi에 있는 친구와 함께 편집합니다. 떨어져 있는 동안의 편집은 다시 만나면
-          합쳐집니다.
+          {t(
+            "같은 Wi-Fi에 있는 친구와 함께 편집합니다. 떨어져 있는 동안의 편집은 다시 만나면 합쳐집니다.",
+          )}
         </p>
 
         {active && m ? (
@@ -66,12 +70,13 @@ function MemberList({
   editable: boolean;
   myId: string | null;
 }) {
+  const t = useT();
   const connected = useShare((s) => s.connected);
   const setMembers = useShare((s) => s.setMembers);
 
   return (
     <>
-      <h3 className="dialog-section">멤버 {members.length}명</h3>
+      <h3 className="dialog-section">{t("멤버 {count}명", { count: members.length })}</h3>
       <ul className="peer-list">
         {members.map((member) => {
           const isMe = member.id === myId;
@@ -80,11 +85,11 @@ function MemberList({
             <li key={member.id} className="peer-row">
               <span
                 className={`presence${online ? " online" : ""}`}
-                title={online ? "지금 함께 편집 중" : "떨어져 있음 (만나면 합쳐짐)"}
+                title={online ? t("지금 함께 편집 중") : t("떨어져 있음 (만나면 합쳐짐)")}
               />
               <span className="peer-name">
                 {member.name}
-                {isMe && " (나)"}
+                {isMe && " (" + t("나") + ")"}
               </span>
               <span className="peer-id">{shortDeviceId(member.id)}</span>
               {editable && member.role !== "owner" ? (
@@ -99,10 +104,10 @@ function MemberList({
                         ),
                       )
                     }
-                    aria-label={`${member.name} 권한`}
+                    aria-label={t("{name} 권한", { name: member.name })}
                   >
-                    <option value="editor">{ROLE_LABEL.editor}</option>
-                    <option value="viewer">{ROLE_LABEL.viewer}</option>
+                    <option value="editor">{t(ROLE_LABEL.editor)}</option>
+                    <option value="viewer">{t(ROLE_LABEL.viewer)}</option>
                   </select>
                   <button
                     type="button"
@@ -110,7 +115,10 @@ function MemberList({
                     onClick={() => {
                       if (
                         window.confirm(
-                          `${member.name}을(를) 공유에서 내보낼까요?\n이미 받아 간 내용은 회수할 수 없습니다.`,
+                          t(
+                            "{name}을(를) 공유에서 내보낼까요?\n이미 받아 간 내용은 회수할 수 없습니다.",
+                            { name: member.name },
+                          ),
                         )
                       ) {
                         void setMembers(
@@ -120,11 +128,11 @@ function MemberList({
                       }
                     }}
                   >
-                    내보내기
+                    {t("내보내기")}
                   </button>
                 </>
               ) : (
-                <span className="dialog-hint">{ROLE_LABEL[member.role]}</span>
+                <span className="dialog-hint">{t(ROLE_LABEL[member.role])}</span>
               )}
             </li>
           );
@@ -132,8 +140,9 @@ function MemberList({
       </ul>
       {editable && (
         <p className="dialog-hint">
-          권한 변경·내보내기는 그 기기를 다음에 만날 때 적용됩니다. 그 전까지는 이전 권한으로
-          동기화될 수 있습니다.
+          {t(
+            "권한 변경·내보내기는 그 기기를 다음에 만날 때 적용됩니다. 그 전까지는 이전 권한으로 동기화될 수 있습니다.",
+          )}
         </p>
       )}
     </>
@@ -141,6 +150,7 @@ function MemberList({
 }
 
 function InvitePicker({ noteId, exclude }: { noteId: string; exclude: string[] }) {
+  const t = useT();
   const contacts = useShare((s) => s.contacts);
   const shareNote = useShare((s) => s.shareNote);
   const openFriends = useShare((s) => s.openDialog);
@@ -154,7 +164,7 @@ function InvitePicker({ noteId, exclude }: { noteId: string; exclude: string[] }
   if (contacts.length === 0) {
     return (
       <div className="empty-friends">
-        <p>공유하려면 먼저 같은 Wi-Fi에 있는 친구를 등록하세요.</p>
+        <p>{t("공유하려면 먼저 같은 Wi-Fi에 있는 친구를 등록하세요.")}</p>
         <button
           type="button"
           className="text-btn primary"
@@ -163,7 +173,7 @@ function InvitePicker({ noteId, exclude }: { noteId: string; exclude: string[] }
             void openFriends();
           }}
         >
-          친구 추가
+          {t("친구 추가")}
         </button>
       </div>
     );
@@ -172,7 +182,7 @@ function InvitePicker({ noteId, exclude }: { noteId: string; exclude: string[] }
 
   return (
     <>
-      <h3 className="dialog-section">{exclude.length ? "친구 초대" : "함께 편집할 친구"}</h3>
+      <h3 className="dialog-section">{exclude.length ? t("친구 초대") : t("함께 편집할 친구")}</h3>
       <ul className="peer-list">
         {candidates.map((c) => {
           const checked = c.deviceId in picked;
@@ -201,10 +211,10 @@ function InvitePicker({ noteId, exclude }: { noteId: string; exclude: string[] }
                 onChange={(e) =>
                   setPicked((p) => ({ ...p, [c.deviceId]: e.target.value as Invitee["role"] }))
                 }
-                aria-label={`${c.name} 권한`}
+                aria-label={t("{name} 권한", { name: c.name })}
               >
-                <option value="editor">{ROLE_LABEL.editor}</option>
-                <option value="viewer">{ROLE_LABEL.viewer}</option>
+                <option value="editor">{t(ROLE_LABEL.editor)}</option>
+                <option value="viewer">{t(ROLE_LABEL.viewer)}</option>
               </select>
             </li>
           );
@@ -223,11 +233,11 @@ function InvitePicker({ noteId, exclude }: { noteId: string; exclude: string[] }
             setPicked({});
           }}
         >
-          {exclude.length ? "초대" : "공유"} ({count})
+          {exclude.length ? t("초대") : t("공유")} ({count})
         </button>
       </div>
       <p className="dialog-hint">
-        친구가 같은 Wi-Fi에 없으면 다음에 만날 때 공유 제안이 전달됩니다.
+        {t("친구가 같은 Wi-Fi에 없으면 다음에 만날 때 공유 제안이 전달됩니다.")}
       </p>
     </>
   );
@@ -242,23 +252,26 @@ function ShareFooter({
   isOwner: boolean;
   myRole: ShareRole | null;
 }) {
+  const t = useT();
   const { endShare, leaveShare, closeShareDialog } = useShare();
   return (
     <div className="dialog-actions end">
-      {!isOwner && myRole && <span className="dialog-hint">내 권한: {ROLE_LABEL[myRole]}</span>}
+      {!isOwner && myRole && (
+        <span className="dialog-hint">{t("내 권한: {role}", { role: t(ROLE_LABEL[myRole]) })}</span>
+      )}
       <button
         type="button"
         className="text-btn danger"
         onClick={async () => {
           const message = isOwner
-            ? "공유를 종료할까요?\n친구들의 메모는 각자의 개인 메모로 남습니다."
-            : "공유에서 나갈까요?\n이 메모는 내 개인 메모로 남고, 이후 변경은 받지 않습니다.";
+            ? t("공유를 종료할까요?\n친구들의 메모는 각자의 개인 메모로 남습니다.")
+            : t("공유에서 나갈까요?\n이 메모는 내 개인 메모로 남고, 이후 변경은 받지 않습니다.");
           if (!window.confirm(message)) return;
           await (isOwner ? endShare(noteId) : leaveShare(noteId));
           closeShareDialog();
         }}
       >
-        {isOwner ? "공유 종료" : "공유 나가기"}
+        {isOwner ? t("공유 종료") : t("공유 나가기")}
       </button>
     </div>
   );
@@ -266,6 +279,7 @@ function ShareFooter({
 
 /** 받은 공유 제안 (Hub 목록 위) */
 export function OfferBanner() {
+  const t = useT();
   const inbox = useShare((s) => s.inbox);
   const { acceptOffer, declineOffer } = useShare();
   if (inbox.length === 0) return null;
@@ -274,17 +288,20 @@ export function OfferBanner() {
       {inbox.map((offer) => (
         <div key={offer.noteId} className="offer-row">
           <span className="offer-text">
-            <b>{offer.fromName}</b>님이 '{offer.title || "새 메모"}'을(를) 공유했습니다
+            {tRich("{name}님이 '{title}'을(를) 공유했습니다", {
+              name: <b>{offer.fromName}</b>,
+              title: offer.title || t("새 메모"),
+            })}
           </span>
           <button type="button" className="text-btn" onClick={() => declineOffer(offer.noteId)}>
-            거절
+            {t("거절")}
           </button>
           <button
             type="button"
             className="text-btn primary"
             onClick={() => acceptOffer(offer.noteId)}
           >
-            수락
+            {t("수락")}
           </button>
         </div>
       ))}

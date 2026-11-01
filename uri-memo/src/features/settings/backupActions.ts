@@ -18,10 +18,7 @@ export async function exportBackup(): Promise<number | null> {
   flushPendingEdit();
   await flushAllDocs();
   const backup = await (await service()).export(currentSettings());
-  const saved = await saveJsonFile(
-    backupFileName(Date.now()),
-    JSON.stringify(backup, null, 2),
-  );
+  const saved = await saveJsonFile(backupFileName(Date.now()), JSON.stringify(backup, null, 2));
   return saved ? backup.notes.length : null;
 }
 

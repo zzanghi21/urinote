@@ -68,6 +68,7 @@ pub fn run() {
         reminders::reminders_set,
         backup::backup_save,
         backup::backup_open,
+        desktop::tray_set_labels,
     ]);
 
     builder

@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import * as Y from "yjs";
 import type { DocStore } from "./docStore";
 import { cleanFolderName, type Folder, type FolderRepository } from "./folder";
@@ -143,7 +144,13 @@ export class BackupService {
         continue;
       }
       const now = this.now();
-      const folder: Folder = { id: f.id, name: f.name, sort: ++sort, createdAt: now, updatedAt: now };
+      const folder: Folder = {
+        id: f.id,
+        name: f.name,
+        sort: ++sort,
+        createdAt: now,
+        updatedAt: now,
+      };
       await this.folders.upsert(folder);
       mine.push(folder);
       map.set(f.id, f.id);
@@ -160,12 +167,12 @@ export function parseBackup(text: string): BackupFile {
   try {
     raw = JSON.parse(text);
   } catch {
-    throw new BackupFormatError("JSON 파일이 아닙니다");
+    throw new BackupFormatError(t("JSON 파일이 아닙니다"));
   }
   const r = obj(raw);
-  if (r.app !== BACKUP_APP) throw new BackupFormatError("Urinote 백업 파일이 아닙니다");
+  if (r.app !== BACKUP_APP) throw new BackupFormatError(t("Urinote 백업 파일이 아닙니다"));
   if (r.format !== BACKUP_FORMAT) {
-    throw new BackupFormatError("이 버전의 Urinote 에서 읽을 수 없는 백업 형식입니다");
+    throw new BackupFormatError(t("이 버전의 Urinote 에서 읽을 수 없는 백업 형식입니다"));
   }
   if (!Array.isArray(r.notes) || r.notes.length > MAX_NOTES) throw bad("notes");
   if (!Array.isArray(r.folders) || r.folders.length > MAX_FOLDERS) throw bad("folders");
@@ -217,11 +224,13 @@ export function parseBackup(text: string): BackupFile {
   };
 }
 
-const obj = (v: unknown) => (typeof v === "object" && v !== null ? v : {}) as Record<string, unknown>;
+const obj = (v: unknown) =>
+  (typeof v === "object" && v !== null ? v : {}) as Record<string, unknown>;
 const isId = (v: unknown): v is string =>
   typeof v === "string" && v.length > 0 && v.length <= 64 && /^[A-Za-z0-9-]+$/.test(v);
 const isTime = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) >= 0;
-const bad = (where: string) => new BackupFormatError(`백업 파일이 손상되었습니다 (${where})`);
+const bad = (where: string) =>
+  new BackupFormatError(t("백업 파일이 손상되었습니다 ({where})", { where }));
 
 /** 다른 프로그램이 만든 이상한 데이터가 문서 저장소에 들어가지 않게, 실제로 적용되는지 확인한다 */
 function isYjsUpdate(update: Uint8Array) {

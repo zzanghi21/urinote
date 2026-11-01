@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { previewFromText } from "../../domain/note";
 import type { NoteService } from "../../domain/noteService";
 import { splitReminders } from "../../domain/reminder";
+import { t } from "../../i18n";
 import { isDesktopApp } from "../../platform/env";
 import { emitNoteChanged } from "../../platform/events";
 import { onReminderDue, scheduleReminders } from "../../platform/reminders";
@@ -42,8 +43,8 @@ export const useReminders = create<RemindersState>((set, get) => {
       upcoming.map((n) => ({
         noteId: n.id,
         at: n.remindAt!,
-        title: n.title || "메모 알림",
-        body: previewFromText(n.plainText, 100) || "Urinote 메모 알림",
+        title: n.title || t("메모 알림"),
+        body: previewFromText(n.plainText, 100) || t("Urinote 메모 알림"),
       })),
     );
   };

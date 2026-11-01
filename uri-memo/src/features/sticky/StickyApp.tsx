@@ -10,6 +10,7 @@ import {
 import type { Note } from "../../domain/note";
 import { NoteService, type NoteEdit } from "../../domain/noteService";
 import { formatReminder } from "../../domain/reminder";
+import { useT } from "../../i18n";
 import { ReminderFields } from "../reminders/ReminderPicker";
 import { emitNoteChanged, onNoteChangedElsewhere } from "../../platform/events";
 import { openSticky, showHub, STICKY_COLLAPSED_HEIGHT } from "../../platform/stickyWindows";
@@ -29,6 +30,7 @@ const stickyRepo = () => StickyWindowRepository.open();
 
 /** 바탕화면에 붙는 메모 1개 = 창 1개 */
 export function StickyApp({ noteId }: { noteId: string }) {
+  const t = useT();
   const [service, setService] = useState<NoteService | null>(null);
   const [note, setNote] = useState<Note | null>(null);
   const [win, setWin] = useState<StickyWindowState>(() => defaultStickyState(noteId));
@@ -186,17 +188,22 @@ export function StickyApp({ noteId }: { noteId: string }) {
         data-tauri-drag-region
         onDoubleClick={(e) => e.target === e.currentTarget && void toggleCollapsed()}
       >
-        <button type="button" className="sticky-btn" onClick={newSticky} title="새 메모 (Ctrl+N)">
+        <button
+          type="button"
+          className="sticky-btn"
+          onClick={newSticky}
+          title={t("새 메모 (Ctrl+N)")}
+        >
           +
         </button>
         <span className="sticky-bar-title" data-tauri-drag-region>
-          {win.collapsed ? note.title || "새 메모" : ""}
+          {win.collapsed ? note.title || t("새 메모") : ""}
         </span>
         <button
           type="button"
           className={`sticky-btn${menuOpen ? " active" : ""}`}
           onClick={() => setMenuOpen((open) => !open)}
-          title="메뉴"
+          title={t("메뉴")}
           aria-expanded={menuOpen}
         >
           ⋯
@@ -205,7 +212,7 @@ export function StickyApp({ noteId }: { noteId: string }) {
           type="button"
           className="sticky-btn"
           onClick={() => appWindow.close()}
-          title="닫기 (메모는 목록에 남습니다)"
+          title={t("닫기 (메모는 목록에 남습니다)")}
         >
           ×
         </button>
@@ -216,10 +223,10 @@ export function StickyApp({ noteId }: { noteId: string }) {
           <ColorPicker value={note.color} onChange={(color) => void edit({ color })} />
           <label className="sticky-menu-row">
             <input type="checkbox" checked={win.alwaysOnTop} onChange={toggleAlwaysOnTop} />
-            항상 위
+            {t("항상 위")}
           </label>
           <label className="sticky-menu-row">
-            투명도
+            {t("투명도")}
             <input
               type="range"
               min={30}
@@ -230,20 +237,17 @@ export function StickyApp({ noteId }: { noteId: string }) {
             />
           </label>
           <details className="sticky-menu-reminder">
-            <summary>{note.remindAt ? `⏰ ${formatReminder(note.remindAt)}` : "⏰ 알림"}</summary>
-            <ReminderFields
-              value={note.remindAt}
-              onChange={(at) => void setReminder(at)}
-            />
+            <summary>⏰ {note.remindAt ? formatReminder(note.remindAt) : t("알림")}</summary>
+            <ReminderFields value={note.remindAt} onChange={(at) => void setReminder(at)} />
           </details>
           <button type="button" className="sticky-menu-item" onClick={toggleCollapsed}>
-            {win.collapsed ? "펼치기" : "접기"}
+            {win.collapsed ? t("펼치기") : t("접기")}
           </button>
           <button type="button" className="sticky-menu-item" onClick={() => void showHub()}>
-            메모 목록 열기
+            {t("메모 목록 열기")}
           </button>
           <button type="button" className="sticky-menu-item danger" onClick={moveToTrash}>
-            휴지통으로 이동
+            {t("휴지통으로 이동")}
           </button>
         </div>
       )}

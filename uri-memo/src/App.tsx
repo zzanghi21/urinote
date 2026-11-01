@@ -13,6 +13,8 @@ import { useShare } from "./features/share/shareStore";
 import { isDesktopApp } from "./platform/env";
 import { onAppEvent, onNoteChangedElsewhere } from "./platform/events";
 import { restoreOpenStickies } from "./platform/stickyWindows";
+import { updateTrayLabels } from "./platform/tray";
+import { useLocale, useT } from "./i18n";
 import "./App.css";
 
 /** App.css 의 2단 레이아웃 기준과 같아야 한다 */
@@ -20,6 +22,7 @@ const TWO_PANE_QUERY = "(min-width: 720px)";
 const COMPACT_INTERVAL_MS = 5 * 60 * 1000;
 
 function App() {
+  const t = useT();
   const ready = useNotes((s) => s.ready);
   const hasSelection = useNotes((s) => s.selectedId !== null);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +71,12 @@ function App() {
     };
   }, [ready]);
 
+  // 트레이 메뉴도 앱 언어를 따른다
+  const locale = useLocale();
+  useEffect(() => {
+    void updateTrayLabels().catch(console.error);
+  }, [locale]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
@@ -88,13 +97,13 @@ function App() {
   if (error) {
     return (
       <main className="app-message">
-        <p>저장소를 열지 못했습니다.</p>
+        <p>{t("저장소를 열지 못했습니다.")}</p>
         <pre>{error}</pre>
       </main>
     );
   }
 
-  if (!ready) return <main className="app-message">불러오는 중…</main>;
+  if (!ready) return <main className="app-message">{t("불러오는 중…")}</main>;
 
   return (
     <main className={`app${hasSelection ? " has-selection" : ""}`}>

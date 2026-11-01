@@ -59,11 +59,13 @@ describe("parseSettings", () => {
       theme: "dark",
       defaultColor: "blue",
       fontSize: "large",
+      language: "system",
     });
-    expect(parseSettings({ theme: "neon", defaultColor: 3 })).toEqual({
+    expect(parseSettings({ theme: "neon", defaultColor: 3, language: "fr" })).toEqual({
       theme: "system",
       defaultColor: "yellow",
       fontSize: "medium",
+      language: "system",
     });
     expect(parseSettings(null).theme).toBe("system");
   });

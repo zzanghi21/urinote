@@ -1,6 +1,7 @@
 import { getAllWebviewWindows, WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { availableMonitors, cursorPosition, getCurrentWindow } from "@tauri-apps/api/window";
 import { StickyWindowRepository } from "../data/local/stickyWindowRepo";
+import { t } from "../i18n";
 
 export const STICKY_MIN_WIDTH = 200;
 /** 접힌 스티키 = 상단 바만 보이는 높이 */
@@ -41,7 +42,7 @@ export async function openSticky(noteId: string, options: OpenStickyOptions = {}
 
   const sticky = new WebviewWindow(stickyLabel(noteId), {
     url: `/?sticky=${encodeURIComponent(noteId)}`,
-    title: "Urinote 메모",
+    title: t("Urinote 메모"),
     x: state.x ?? undefined,
     y: state.y ?? undefined,
     width: state.w,

@@ -1,4 +1,5 @@
 import { ColorPicker } from "../../components/ColorPicker";
+import { useT } from "../../i18n";
 import { isDesktopApp } from "../../platform/env";
 import { openSticky } from "../../platform/stickyWindows";
 import { ReminderButton } from "../reminders/ReminderPicker";
@@ -10,6 +11,7 @@ import { NoteEditor } from "./NoteEditor";
 import { useNotes, useSelectedNote } from "./notesStore";
 
 export function EditorPane() {
+  const t = useT();
   const note = useSelectedNote();
   const folders = useNotes((s) => s.folders);
   const { select, edit, trash, restore, deleteForever } = useNotes.getState();
@@ -22,7 +24,7 @@ export function EditorPane() {
   if (!note) {
     return (
       <section className="editor-pane empty">
-        <p>메모를 선택하거나 새로 만드세요.</p>
+        <p>{t("메모를 선택하거나 새로 만드세요.")}</p>
       </section>
     );
   }
@@ -37,13 +39,13 @@ export function EditorPane() {
   const shared = activeShare !== null && myRole !== null;
 
   return (
-    <section className={`editor-pane color-${note.color}`} aria-label="메모 편집">
+    <section className={`editor-pane color-${note.color}`} aria-label={t("메모 편집")}>
       <header className="editor-header">
         <button
           type="button"
           className="icon-btn back-btn"
           onClick={() => select(null)}
-          aria-label="목록으로"
+          aria-label={t("목록으로")}
         >
           ‹
         </button>
@@ -52,42 +54,40 @@ export function EditorPane() {
           <div className="editor-actions">
             <span className="editor-meta">
               {activeShare
-                ? "공유 메모입니다. 영구 삭제하면 공유에서 나갑니다 (소유자는 공유 종료)."
-                : "휴지통의 메모는 30일 후 영구 삭제됩니다."}
+                ? t("공유 메모입니다. 영구 삭제하면 공유에서 나갑니다 (소유자는 공유 종료).")
+                : t("휴지통의 메모는 30일 후 영구 삭제됩니다.")}
             </span>
             <button type="button" className="text-btn" onClick={() => restore(note.id)}>
-              복원
+              {t("복원")}
             </button>
             <button
               type="button"
               className="text-btn danger"
               onClick={async () => {
-                if (!window.confirm("이 메모를 영구 삭제할까요? 되돌릴 수 없습니다.")) return;
+                if (!window.confirm(t("이 메모를 영구 삭제할까요? 되돌릴 수 없습니다."))) return;
                 if (activeShare) await beforeDeleteForever(note.id);
                 await deleteForever(note.id);
               }}
             >
-              영구 삭제
+              {t("영구 삭제")}
             </button>
           </div>
         ) : (
           <div className="editor-actions">
             <span className="editor-meta">
-              {viewOnly ? "보기 전용 · " : ""}
-              {formatNoteTime(note.updatedAt)} 수정
+              {viewOnly ? t("보기 전용") + " · " : ""}
+              {t("{time} 수정", { time: formatNoteTime(note.updatedAt) })}
             </span>
             <ColorPicker value={note.color} onChange={(color) => edit(note.id, { color })} />
             {folders.length > 0 && (
               <select
                 className="folder-select"
                 value={note.folderId ?? ""}
-                onChange={(e) =>
-                  useNotes.getState().moveToFolder(note.id, e.target.value || null)
-                }
-                aria-label="폴더"
-                title="폴더"
+                onChange={(e) => useNotes.getState().moveToFolder(note.id, e.target.value || null)}
+                aria-label={t("폴더")}
+                title={t("폴더")}
               >
-                <option value="">폴더 없음</option>
+                <option value="">{t("폴더 없음")}</option>
                 {folders.map((f) => (
                   <option key={f.id} value={f.id}>
                     {f.name}
@@ -105,11 +105,14 @@ export function EditorPane() {
                 type="button"
                 className={`icon-btn${activeShare ? " active" : ""}`}
                 onClick={() => openShareDialog(note.id)}
-                aria-label="친구와 공유"
+                aria-label={t("친구와 공유")}
                 title={
                   activeShare
-                    ? `공유 중 · ${activeShare.members.length}명 (지금 연결 ${online.length}명)`
-                    : "친구와 공유 (같은 Wi-Fi)"
+                    ? t("공유 중 · {count}명 (지금 연결 {online}명)", {
+                        count: activeShare.members.length,
+                        online: online.length,
+                      })
+                    : t("친구와 공유 (같은 Wi-Fi)")
                 }
               >
                 👥
@@ -121,8 +124,8 @@ export function EditorPane() {
                 type="button"
                 className="icon-btn"
                 onClick={() => openSticky(note.id)}
-                aria-label="바탕화면에 붙이기"
-                title="바탕화면에 붙이기"
+                aria-label={t("바탕화면에 붙이기")}
+                title={t("바탕화면에 붙이기")}
               >
                 ⧉
               </button>
@@ -132,8 +135,8 @@ export function EditorPane() {
               className={`icon-btn${note.pinned ? " active" : ""}`}
               onClick={() => edit(note.id, { pinned: !note.pinned })}
               aria-pressed={note.pinned}
-              aria-label={note.pinned ? "고정 해제" : "고정"}
-              title={note.pinned ? "고정 해제" : "고정"}
+              aria-label={note.pinned ? t("고정 해제") : t("고정")}
+              title={note.pinned ? t("고정 해제") : t("고정")}
             >
               📌
             </button>
@@ -141,8 +144,8 @@ export function EditorPane() {
               type="button"
               className="icon-btn"
               onClick={() => trash(note.id)}
-              aria-label="휴지통으로 이동"
-              title={activeShare ? "휴지통으로 이동 (나에게서만 숨김)" : "휴지통으로 이동"}
+              aria-label={t("휴지통으로 이동")}
+              title={activeShare ? t("휴지통으로 이동 (나에게서만 숨김)") : t("휴지통으로 이동")}
             >
               🗑
             </button>
@@ -155,11 +158,11 @@ export function EditorPane() {
         <div className="share-notice" role="status">
           <span>
             {share.status === "ended"
-              ? "소유자가 공유를 종료했습니다. 이 메모는 내 개인 메모로 남았습니다."
-              : "공유에서 빠졌습니다. 이 메모는 내 개인 메모로 남았습니다."}
+              ? t("소유자가 공유를 종료했습니다. 이 메모는 내 개인 메모로 남았습니다.")
+              : t("공유에서 빠졌습니다. 이 메모는 내 개인 메모로 남았습니다.")}
           </span>
           <button type="button" className="text-btn" onClick={() => forgetShare(note.id)}>
-            확인
+            {t("확인")}
           </button>
         </div>
       )}
@@ -177,16 +180,23 @@ export function EditorPane() {
 
 /** 지금 연결되어 함께 보고 있을 수 있는 멤버 (커서 색과 같은 색) */
 function PresenceAvatars({ members }: { members: Member[] }) {
+  const t = useT();
   const contacts = useShare((s) => s.contacts);
   if (members.length === 0) {
     return (
-      <span className="presence-none" title="연결된 멤버가 없습니다. 다시 만나면 편집이 합쳐집니다">
-        혼자 편집 중
+      <span
+        className="presence-none"
+        title={t("연결된 멤버가 없습니다. 다시 만나면 편집이 합쳐집니다")}
+      >
+        {t("혼자 편집 중")}
       </span>
     );
   }
   return (
-    <span className="presence-avatars" aria-label={`지금 연결된 멤버 ${members.length}명`}>
+    <span
+      className="presence-avatars"
+      aria-label={t("지금 연결된 멤버 {count}명", { count: members.length })}
+    >
       {members.map((m) => {
         const name = contacts.find((c) => c.deviceId === m.id)?.name ?? m.name;
         return (
@@ -194,7 +204,7 @@ function PresenceAvatars({ members }: { members: Member[] }) {
             key={m.id}
             className="presence-avatar"
             style={{ backgroundColor: presenceColor(m.id) }}
-            title={`${name} · 연결됨`}
+            title={t("{name} · 연결됨", { name })}
           >
             {[...name][0] ?? "?"}
           </span>

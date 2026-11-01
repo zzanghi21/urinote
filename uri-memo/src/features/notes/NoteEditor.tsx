@@ -7,6 +7,7 @@ import { yXmlFragmentToProsemirrorJSON, ySyncPluginKey } from "@tiptap/y-tiptap"
 import type * as Y from "yjs";
 import { baseExtensions, DOC_FIELD } from "../../domain/editorSchema";
 import type { NoteEdit } from "../../domain/noteService";
+import { useT } from "../../i18n";
 import { onAppEvent } from "../../platform/events";
 import { acquireDoc, flushAllDocs } from "./docSession";
 import { registerEditorFlush } from "./editorFlush";
@@ -167,6 +168,7 @@ function CollabEditor({
 }
 
 function Toolbar({ editor }: { editor: Editor }) {
+  const t = useT();
   const state = useEditorState({
     editor,
     selector: ({ editor }) => ({
@@ -181,31 +183,31 @@ function Toolbar({ editor }: { editor: Editor }) {
 
   const chain = () => editor.chain().focus();
   const buttons = [
-    { key: "bold", label: "B", title: "굵게 (Ctrl+B)", run: () => chain().toggleBold().run() },
+    { key: "bold", label: "B", title: t("굵게 (Ctrl+B)"), run: () => chain().toggleBold().run() },
     {
       key: "italic",
       label: "I",
-      title: "기울임 (Ctrl+I)",
+      title: t("기울임 (Ctrl+I)"),
       run: () => chain().toggleItalic().run(),
     },
     {
       key: "underline",
       label: "U",
-      title: "밑줄 (Ctrl+U)",
+      title: t("밑줄 (Ctrl+U)"),
       run: () => chain().toggleUnderline().run(),
     },
-    { key: "strike", label: "S", title: "취소선", run: () => chain().toggleStrike().run() },
+    { key: "strike", label: "S", title: t("취소선"), run: () => chain().toggleStrike().run() },
     {
       key: "bullet",
       label: "•",
-      title: "글머리 기호",
+      title: t("글머리 기호"),
       run: () => chain().toggleBulletList().run(),
     },
-    { key: "task", label: "☑", title: "체크리스트", run: () => chain().toggleTaskList().run() },
+    { key: "task", label: "☑", title: t("체크리스트"), run: () => chain().toggleTaskList().run() },
   ] as const;
 
   return (
-    <div className="toolbar" role="toolbar" aria-label="서식">
+    <div className="toolbar" role="toolbar" aria-label={t("서식")}>
       {buttons.map((b) => (
         <button
           key={b.key}

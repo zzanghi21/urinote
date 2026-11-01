@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { FONT_SCALE, parseSettings, type Settings } from "../../domain/settings";
+import { setLocale, systemLocale } from "../../i18n";
 
 /**
  * 설정은 localStorage 에 둔다. 같은 앱의 창들은 저장소를 함께 쓰고,
@@ -7,7 +8,8 @@ import { FONT_SCALE, parseSettings, type Settings } from "../../domain/settings"
  */
 const STORAGE_KEY = "urinote:settings";
 
-const dark = typeof window !== "undefined" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+const dark =
+  typeof window !== "undefined" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
 
 function load(): Settings {
   try {
@@ -17,11 +19,11 @@ function load(): Settings {
   }
 }
 
-/** 테마·글자 크기를 문서에 적용한다 (CSS 는 data-theme, --font-scale 을 본다) */
+/** 테마·글자 크기·언어를 문서에 적용한다 (CSS 는 data-theme, --font-scale 을 본다) */
 function apply(settings: Settings) {
+  setLocale(settings.language === "system" ? systemLocale() : settings.language);
   const root = document.documentElement;
-  const theme =
-    settings.theme === "system" ? (dark?.matches ? "dark" : "light") : settings.theme;
+  const theme = settings.theme === "system" ? (dark?.matches ? "dark" : "light") : settings.theme;
   root.dataset.theme = theme;
   root.style.colorScheme = theme;
   root.style.setProperty("--font-scale", String(FONT_SCALE[settings.fontSize]));
@@ -56,10 +58,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
   },
 }));
 
-const pick = ({ theme, defaultColor, fontSize }: Settings): Settings => ({
+const pick = ({ theme, defaultColor, fontSize, language }: Settings): Settings => ({
   theme,
   defaultColor,
   fontSize,
+  language,
 });
 
 export const currentSettings = (): Settings => pick(useSettings.getState());

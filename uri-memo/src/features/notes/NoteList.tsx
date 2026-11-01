@@ -1,11 +1,13 @@
 import { previewFromText } from "../../domain/note";
 import { formatReminder } from "../../domain/reminder";
+import { useT } from "../../i18n";
 import { isDesktopApp } from "../../platform/env";
 import { openSticky } from "../../platform/stickyWindows";
 import { formatNoteTime } from "./formatTime";
 import { useNotes } from "./notesStore";
 
 export function NoteList() {
+  const t = useT();
   const notes = useNotes((s) => s.notes);
   const view = useNotes((s) => s.view);
   const query = useNotes((s) => s.query);
@@ -17,19 +19,19 @@ export function NoteList() {
 
   if (notes.length === 0) {
     const message = query
-      ? `"${query}"에 대한 검색 결과가 없습니다.`
+      ? t('"{query}"에 대한 검색 결과가 없습니다.', { query })
       : view === "trash"
-        ? "휴지통이 비어 있습니다."
+        ? t("휴지통이 비어 있습니다.")
         : view === "pinned"
-          ? "고정한 메모가 없습니다."
+          ? t("고정한 메모가 없습니다.")
           : folderId
-            ? "이 폴더에 메모가 없습니다.\n+ 버튼을 누르면 이 폴더에 만듭니다."
-            : "메모가 없습니다.\n+ 버튼으로 새 메모를 만드세요.";
+            ? t("이 폴더에 메모가 없습니다.\n+ 버튼을 누르면 이 폴더에 만듭니다.")
+            : t("메모가 없습니다.\n+ 버튼으로 새 메모를 만드세요.");
     return <p className="note-list-empty">{message}</p>;
   }
 
   return (
-    <ul className="note-list" aria-label="메모 목록">
+    <ul className="note-list" aria-label={t("메모 목록")}>
       {notes.map((note) => (
         <li key={note.id}>
           <button
@@ -37,18 +39,22 @@ export function NoteList() {
             className={`note-card color-${note.color}${note.id === selectedId ? " selected" : ""}`}
             onClick={() => select(note.id)}
             onDoubleClick={() => isDesktopApp && view !== "trash" && void openSticky(note.id)}
-            title={isDesktopApp && view !== "trash" ? "더블클릭: 바탕화면에 붙이기" : undefined}
+            title={isDesktopApp && view !== "trash" ? t("더블클릭: 바탕화면에 붙이기") : undefined}
             aria-current={note.id === selectedId}
           >
             <span className="note-card-head">
-              <span className="note-card-title">{note.title || "새 메모"}</span>
+              <span className="note-card-title">{note.title || t("새 메모")}</span>
               {note.spaceId && (
-                <span className="note-card-pin" aria-label="친구와 공유 중" title="친구와 공유 중">
+                <span
+                  className="note-card-pin"
+                  aria-label={t("친구와 공유 중")}
+                  title={t("친구와 공유 중")}
+                >
                   👥
                 </span>
               )}
               {note.pinned && (
-                <span className="note-card-pin" aria-label="고정됨">
+                <span className="note-card-pin" aria-label={t("고정됨")}>
                   📌
                 </span>
               )}

@@ -4,6 +4,7 @@ import { Awareness, applyAwarenessUpdate, removeAwarenessStates } from "y-protoc
 import * as Y from "yjs";
 import { fromBase64, toBase64 } from "../../domain/noteDoc";
 import type { SharesRepository } from "../../data/local/sharesRepo";
+import { t } from "../../i18n";
 import { roleOf } from "./membership";
 import type { SyncMessage } from "./protocol";
 
@@ -21,7 +22,16 @@ export interface PresenceUser {
 }
 
 /** 기기 ID 로 정하는 커서 색. 모든 기기에서 같은 친구는 같은 색으로 보인다 */
-const PALETTE = ["#e5484d", "#f76b15", "#ad7f00", "#30a46c", "#0d9488", "#0090ff", "#6e56cf", "#d6409f"];
+const PALETTE = [
+  "#e5484d",
+  "#f76b15",
+  "#ad7f00",
+  "#30a46c",
+  "#0d9488",
+  "#0090ff",
+  "#6e56cf",
+  "#d6409f",
+];
 
 export function presenceColor(deviceId: string) {
   let hash = 0;
@@ -173,7 +183,7 @@ export class PresenceHub {
 
     const mirror = this.mirror(noteId);
     const user: PresenceUser = {
-      name: this.deps.nameOf(from) ?? members.get(from) ?? "친구",
+      name: this.deps.nameOf(from) ?? members.get(from) ?? t("친구"),
       color: presenceColor(from),
     };
     let owned = [...mirror.owners.values()].filter((p) => p === from).length;

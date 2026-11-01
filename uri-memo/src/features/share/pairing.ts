@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { fromBase64, toBase64 } from "../../domain/noteDoc";
 import type { PairMessage } from "./protocol";
 
@@ -246,7 +247,7 @@ export class PairingSession {
     try {
       await this.deps.send(this.peerId, message);
     } catch (e) {
-      this.fail(`메시지를 보내지 못했습니다: ${String(e)}`);
+      this.fail(t("메시지를 보내지 못했습니다: {error}", { error: String(e) }));
     }
   }
 

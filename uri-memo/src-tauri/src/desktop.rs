@@ -1,11 +1,11 @@
 //! 데스크톱 전용: 트레이, 전역 단축키, 자동 실행, 단일 인스턴스
 
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use tauri::{
-    menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem},
+    menu::{CheckMenuItem, Menu, MenuItem, MenuItemKind, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    App, AppHandle, Builder, Emitter, Manager, Runtime, Wry,
+    App, AppHandle, Builder, Emitter, Manager, Runtime, State, Wry,
 };
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_global_shortcut::{
@@ -99,6 +99,8 @@ fn build_tray(app: &App) -> tauri::Result<()> {
         ],
     )?;
 
+    app.manage(TrayMenu(menu.clone()));
+
     let mut tray = TrayIconBuilder::with_id("main")
         .tooltip("Urinote")
         .menu(&menu)
@@ -135,6 +137,24 @@ fn build_tray(app: &App) -> tauri::Result<()> {
     }
     tray.build(app)?;
     Ok(())
+}
+
+/// 트레이 메뉴. 앱 언어를 바꾸면 Hub 가 `tray_set_labels` 로 문구를 바꾼다
+pub struct TrayMenu(Menu<Wry>);
+
+/// 메뉴 ID(new, show_all, hide_all, hub, autostart, quit) → 표시 문구
+#[tauri::command]
+pub(crate) fn tray_set_labels(menu: State<'_, TrayMenu>, labels: HashMap<String, String>) {
+    for (id, text) in labels {
+        let result = match menu.0.get(id.as_str()) {
+            Some(MenuItemKind::MenuItem(item)) => item.set_text(text),
+            Some(MenuItemKind::Check(item)) => item.set_text(text),
+            _ => Ok(()),
+        };
+        if let Err(err) = result {
+            eprintln!("tray label {id} not set: {err}");
+        }
+    }
 }
 
 pub fn show_hub<R: Runtime>(app: &AppHandle<R>) {

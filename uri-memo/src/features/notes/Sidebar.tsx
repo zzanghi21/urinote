@@ -1,4 +1,5 @@
 import type { NoteView } from "../../domain/note";
+import { useT } from "../../i18n";
 import { OfferBanner } from "../share/ShareDialog";
 import { MissedBanner } from "../reminders/MissedBanner";
 import { useSettings } from "../settings/settingsStore";
@@ -9,11 +10,12 @@ import { useNotes } from "./notesStore";
 
 const VIEWS: { view: NoteView; label: string }[] = [
   { view: "all", label: "전체" },
-  { view: "pinned", label: "고정" },
+  { view: "pinned", label: "고정@tab" },
   { view: "trash", label: "휴지통" },
 ];
 
 export function Sidebar({ searchRef }: { searchRef: React.RefObject<HTMLInputElement | null> }) {
+  const t = useT();
   const view = useNotes((s) => s.view);
   const query = useNotes((s) => s.query);
   const { setView, setQuery, create } = useNotes.getState();
@@ -25,10 +27,10 @@ export function Sidebar({ searchRef }: { searchRef: React.RefObject<HTMLInputEle
   const shareError = useShare((s) => s.error);
   const status =
     friendCount === 0
-      ? "친구 (같은 Wi-Fi 공유)"
+      ? t("친구 (같은 Wi-Fi 공유)")
       : onlineCount > 0
-        ? `친구 ${friendCount}명 중 ${onlineCount}명 연결됨`
-        : `친구 ${friendCount}명 · 지금 같은 Wi-Fi 에 없음`;
+        ? t("친구 {count}명 중 {online}명 연결됨", { count: friendCount, online: onlineCount })
+        : t("친구 {count}명 · 지금 같은 Wi-Fi 에 없음", { count: friendCount });
 
   return (
     <aside className="sidebar">
@@ -39,7 +41,9 @@ export function Sidebar({ searchRef }: { searchRef: React.RefObject<HTMLInputEle
             type="button"
             className="icon-btn friends-btn"
             onClick={() => useShare.getState().openDialog()}
-            title={shareError ? `${status}\n오류: ${shareError}` : status}
+            title={
+              shareError ? status + "\n" + t("오류: {message}", { message: t(shareError) }) : status
+            }
             aria-label={status}
           >
             👥
@@ -54,8 +58,8 @@ export function Sidebar({ searchRef }: { searchRef: React.RefObject<HTMLInputEle
           type="button"
           className="icon-btn"
           onClick={() => useSettings.getState().setDialogOpen(true)}
-          title="설정"
-          aria-label="설정"
+          title={t("설정")}
+          aria-label={t("설정")}
         >
           ⚙
         </button>
@@ -63,8 +67,8 @@ export function Sidebar({ searchRef }: { searchRef: React.RefObject<HTMLInputEle
           type="button"
           className="new-btn"
           onClick={() => create()}
-          title="새 메모 (Ctrl+N)"
-          aria-label="새 메모"
+          title={t("새 메모 (Ctrl+N)")}
+          aria-label={t("새 메모")}
         >
           +
         </button>
@@ -74,16 +78,16 @@ export function Sidebar({ searchRef }: { searchRef: React.RefObject<HTMLInputEle
         ref={searchRef}
         className="search"
         type="search"
-        placeholder="메모 검색 (Ctrl+F)"
+        placeholder={t("메모 검색 (Ctrl+F)")}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        aria-label="메모 검색"
+        aria-label={t("메모 검색")}
       />
 
       <MissedBanner />
       <OfferBanner />
 
-      <nav className="view-tabs" aria-label="보기">
+      <nav className="view-tabs" aria-label={t("보기")}>
         {VIEWS.map((v) => (
           <button
             key={v.view}
@@ -92,7 +96,7 @@ export function Sidebar({ searchRef }: { searchRef: React.RefObject<HTMLInputEle
             aria-current={view === v.view}
             onClick={() => setView(v.view)}
           >
-            {v.label}
+            {t(v.label)}
           </button>
         ))}
       </nav>
