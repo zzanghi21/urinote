@@ -36,7 +36,8 @@ async function newNote(a: App, text: string) {
   const editor = a.$(".note-editor-content");
   await editor.waitForExist();
   await editor.click();
-  await a.keys(text);
+  // element send-keys works on contenteditable with both msedgedriver and WebKitWebDriver
+  await editor.addValue(text);
   await a.pause(SAVE_WAIT_MS);
 }
 
