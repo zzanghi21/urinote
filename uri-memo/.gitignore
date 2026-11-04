@@ -26,3 +26,6 @@ dist-ssr
 # Rust
 src-tauri/target*
 
+
+# E2E failure screenshots
+e2e-screenshots/

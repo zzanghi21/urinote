@@ -88,3 +88,9 @@ jobs:
       - run: npm run e2e:build
       # virtual display (xvfb) + session bus (single-instance, notifications)
       - run: dbus-run-session -- xvfb-run -a npm run e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: uri-memo/e2e-screenshots/
+          if-no-files-found: ignore

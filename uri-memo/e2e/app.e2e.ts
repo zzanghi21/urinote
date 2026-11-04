@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { launch, resetData, startDriver, stopDriver, setLanguage, type App } from "./driver";
 
@@ -11,7 +13,15 @@ beforeAll(async () => {
   await startDriver();
 });
 
-afterEach(async () => {
+/** Screenshots of failed tests (uploaded by CI) */
+const SHOTS = new URL("../e2e-screenshots/", import.meta.url);
+
+afterEach(async (ctx) => {
+  if (app && ctx.task.result?.state === "fail") {
+    mkdirSync(SHOTS, { recursive: true });
+    const name = ctx.task.name.replace(/\W+/g, "-");
+    await app.saveScreenshot(fileURLToPath(new URL(`${name}.png`, SHOTS))).catch(() => {});
+  }
   await app?.deleteSession();
   app = null;
 });
@@ -36,8 +46,12 @@ async function newNote(a: App, text: string) {
   const editor = a.$(".note-editor-content");
   await editor.waitForExist();
   await editor.click();
-  // element send-keys works on contenteditable with both msedgedriver and WebKitWebDriver
   await editor.addValue(text);
+  // WebKitWebDriver may not deliver send-keys to contenteditable: insert through the browser's
+  // editing command instead, which ProseMirror handles like typing
+  if (!(await editor.getText()).includes(text)) {
+    await a.execute((t) => document.execCommand("insertText", false, t), text);
+  }
   await a.pause(SAVE_WAIT_MS);
 }
 
