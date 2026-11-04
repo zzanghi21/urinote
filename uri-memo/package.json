@@ -16,11 +16,13 @@
     "test": "vitest run",
     "licenses": "node scripts/third-party-licenses.mjs",
     "e2e:build": "node scripts/e2e-build.mjs",
-    "e2e": "vitest run --config vitest.e2e.config.ts"
+    "e2e": "vitest run --config vitest.e2e.config.ts",
+    "android:apk": "node scripts/android-apk.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-log": "^2.10.1",
+    "@tauri-apps/plugin-notification": "^2.8.0",
     "@tauri-apps/plugin-process": "^2.4.0",
     "@tauri-apps/plugin-sql": "^2.6.0",
     "@tauri-apps/plugin-updater": "^2.14.1",

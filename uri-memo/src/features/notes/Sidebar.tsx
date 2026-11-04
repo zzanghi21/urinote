@@ -1,5 +1,6 @@
 import type { NoteView } from "../../domain/note";
 import { useT } from "../../i18n";
+import { isMobile } from "../../platform/env";
 import { appKey } from "../../platform/shortcuts";
 import { OfferBanner } from "../share/ShareDialog";
 import { MissedBanner } from "../reminders/MissedBanner";
@@ -80,7 +81,8 @@ export function Sidebar({ searchRef }: { searchRef: React.RefObject<HTMLInputEle
         ref={searchRef}
         className="search"
         type="search"
-        placeholder={t("메모 검색 ({key})", { key: appKey("F") })}
+        // no keyboard shortcuts on phones
+        placeholder={isMobile ? t("메모 검색") : t("메모 검색 ({key})", { key: appKey("F") })}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         aria-label={t("메모 검색")}

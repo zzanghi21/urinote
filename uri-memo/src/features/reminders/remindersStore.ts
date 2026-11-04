@@ -5,7 +5,11 @@ import { splitReminders } from "../../domain/reminder";
 import { t } from "../../i18n";
 import { isDesktopApp } from "../../platform/env";
 import { emitNoteChanged } from "../../platform/events";
-import { onReminderDue, scheduleReminders } from "../../platform/reminders";
+import {
+  onReminderDue,
+  remindersFireWhileClosed,
+  scheduleReminders,
+} from "../../platform/reminders";
 import { openSticky } from "../../platform/stickyWindows";
 import { useNotes } from "../notes/notesStore";
 
@@ -66,16 +70,19 @@ export const useReminders = create<RemindersState>((set, get) => {
     async init(svc) {
       service = svc;
       const { missed } = splitReminders(await svc.withReminders(), Date.now());
-      set({
-        missed: missed.map((n) => ({ id: n.id, title: n.title, at: n.remindAt! })),
-      });
+      // on mobile the OS already delivered past reminders while the app was closed: just clear them
+      if (!remindersFireWhileClosed) {
+        set({
+          missed: missed.map((n) => ({ id: n.id, title: n.title, at: n.remindAt! })),
+        });
+      }
       for (const n of missed) await svc.setReminder(n.id, null);
       if (missed.length > 0) await useNotes.getState().refresh();
 
       await onReminderDue((noteId) => {
         void (async () => {
           if (isDesktopApp) await openSticky(noteId);
-          else useNotes.getState().select(noteId);
+          else await get().openMissed(noteId);
           await clear(noteId);
         })();
       });

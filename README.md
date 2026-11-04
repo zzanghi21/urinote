@@ -20,7 +20,24 @@ All platforms: Node.js 24+, Rust stable (rustup)
   sudo apt install libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
     libdbus-1-dev pkg-config patchelf build-essential curl file
   ```
-- Android: Android Studio, SDK, NDK, JDK 17 (`npm run tauri android init`)
+- **Android**: JDK 17–21, Android SDK (platform 36, build-tools 36.1), NDK 30, Rust targets
+  (`rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`).
+  Set `ANDROID_HOME` (e.g. `%LOCALAPPDATA%\Android\Sdk`) and `NDK_HOME` (`%ANDROID_HOME%\ndk\<version>`).
+  The Gradle project lives in `uri-memo/src-tauri/gen/android`.
+
+## Android
+
+```powershell
+cd uri-memo
+npm run android:apk              # debug APK for the emulator (x86_64)
+npm run android:apk -- aarch64   # debug APK for phones
+adb install -r src-tauri/gen/android/app/build/outputs/apk/x86_64/debug/app-x86_64-debug.apk
+```
+
+- `tauri android build` links the Rust library into the Gradle project with a symlink. On Windows that needs **Developer Mode** (Settings → System → For developers). Without it, `npm run android:apk` copies the library instead.
+- Phones use the single-pane layout; the back button / gesture returns from a note to the list.
+- Reminders are scheduled OS notifications (delivered even when the app is closed); tapping one opens the note.
+- Not on mobile yet: friend sharing (P2P), JSON backup, auto-update (updates come from the store / a new APK).
 
 ## Commands
 

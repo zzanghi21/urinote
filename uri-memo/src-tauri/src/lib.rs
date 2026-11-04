@@ -94,6 +94,10 @@ pub fn run() {
         desktop::tray_set_labels,
     ]);
 
+    // mobile: reminders are scheduled OS notifications (the OS shows them even if the app is closed)
+    #[cfg(mobile)]
+    let builder = builder.plugin(tauri_plugin_notification::init());
+
     builder
         .plugin(
             tauri_plugin_sql::Builder::default()

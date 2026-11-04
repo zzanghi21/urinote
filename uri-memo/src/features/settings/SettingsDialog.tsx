@@ -9,6 +9,7 @@ import {
   type Theme,
 } from "../../domain/settings";
 import { useT } from "../../i18n";
+import { isMobile } from "../../platform/env";
 import { exportBackup, importBackup } from "./backupActions";
 import { useSettings } from "./settingsStore";
 import "../share/share.css";
@@ -94,7 +95,8 @@ export function SettingsDialog() {
         <ColorPicker value={defaultColor} onChange={(c) => update({ defaultColor: c })} />
         <p className="dialog-hint">{t("스티키 창의 +는 그 메모와 같은 색으로 만듭니다.")}</p>
 
-        <BackupSection />
+        {/* Android saves files through the system file picker (content URIs): backup is desktop-only for now */}
+        {!isMobile && <BackupSection />}
       </section>
     </div>
   );

@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "mobile",
+  "description": "Mobile: schedule reminders as OS notifications and open the note when one is tapped",
+  "windows": ["main"],
+  "platforms": ["android", "iOS"],
+  "permissions": ["notification:default"]
+}

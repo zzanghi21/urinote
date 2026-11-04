@@ -74,6 +74,34 @@ function App() {
     };
   }, [ready]);
 
+  // Single-pane layout (phones): opening a note adds a history entry, so the Android back button /
+  // back gesture returns to the list instead of closing the app
+  useEffect(() => {
+    if (!ready) return;
+    const twoPane = window.matchMedia(TWO_PANE_QUERY);
+    let pushed = false;
+    const unsubscribe = useNotes.subscribe((s, prev) => {
+      if (s.selectedId === prev.selectedId || twoPane.matches) return;
+      if (s.selectedId && !pushed) {
+        window.history.pushState({ note: true }, "");
+        pushed = true;
+      } else if (!s.selectedId && pushed) {
+        pushed = false;
+        window.history.back();
+      }
+    });
+    const onPop = () => {
+      if (!pushed) return;
+      pushed = false;
+      useNotes.getState().select(null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("popstate", onPop);
+    };
+  }, [ready]);
+
   // The tray menu follows the app language too
   const locale = useLocale();
   useEffect(() => {
