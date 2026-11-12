@@ -59,12 +59,12 @@ describe("Urinote desktop app", () => {
   it("keeps a new note after restarting the app", async () => {
     let a = await open();
     await newNote(a, "Groceries");
-    expect(await titles(a)).toContain("Groceries");
+    await a.waitUntil(async () => (await titles(a)).includes("Groceries"));
 
     await a.deleteSession();
     a = app = await launch();
     await a.$(".note-card").waitForExist({ timeout: 10_000 });
-    expect(await titles(a)).toContain("Groceries");
+    await a.waitUntil(async () => (await titles(a)).includes("Groceries"));
   });
 
   it("searches, trashes and restores notes", async () => {
@@ -104,7 +104,7 @@ describe("Urinote desktop app", () => {
       .waitForExist();
 
     await newNote(a, "Quarterly goals");
-    expect(await titles(a)).toEqual(["Quarterly goals"]);
+    await a.waitUntil(async () => (await titles(a)).join() === "Quarterly goals");
 
     await a.$("//button[contains(@class, 'folder-chip') and text()='모든 폴더']").click();
     await a.waitUntil(async () => (await titles(a)).length === 3);
