@@ -63,6 +63,21 @@ fn log_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
         .build()
 }
 
+/// Which reminder notification the user tapped (Android: `ReminderTapPlugin.kt` in gen/android).
+/// The notification plugin's own tap event carries no notification data and is dropped when it
+/// fires before the frontend listens (a tap that cold-starts the app), so the app reads the
+/// launch intent itself.
+#[cfg(mobile)]
+fn reminder_tap_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
+    tauri::plugin::Builder::new("reminder-tap")
+        .setup(|_app, _api| {
+            #[cfg(target_os = "android")]
+            _api.register_android_plugin("kr.urinote.app", "ReminderTapPlugin")?;
+            Ok(())
+        })
+        .build()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -96,7 +111,9 @@ pub fn run() {
 
     // mobile: reminders are scheduled OS notifications (the OS shows them even if the app is closed)
     #[cfg(mobile)]
-    let builder = builder.plugin(tauri_plugin_notification::init());
+    let builder = builder
+        .plugin(tauri_plugin_notification::init())
+        .plugin(reminder_tap_plugin());
 
     builder
         .plugin(

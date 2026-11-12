@@ -1,9 +1,8 @@
-import { invoke } from "@tauri-apps/api/core";
+import { addPluginListener, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import {
   cancel,
   isPermissionGranted,
-  onAction,
   pending,
   requestPermission,
   Schedule,
@@ -33,16 +32,32 @@ export async function scheduleReminders(reminders: ScheduledReminder[]) {
 
 /**
  * Desktop: a reminder is due (Rust has already shown the OS notification).
- * Mobile: the user tapped a reminder notification.
+ * Mobile: the user tapped a reminder notification, including the tap that started the app.
+ * The tap only carries the notification ID, so `candidates` lists the note IDs it may belong to.
  */
-export async function onReminderDue(handler: (noteId: string) => void): Promise<() => void> {
+export async function onReminderDue(
+  handler: (noteId: string) => void,
+  candidates: () => Promise<string[]>,
+): Promise<() => void> {
   if (isDesktopApp) return listen<string>("reminder://due", (e) => handler(e.payload));
   if (!isMobileApp) return () => {};
-  const listener = await onAction((event) => {
-    const noteId = event.notification?.extra?.noteId;
-    if (typeof noteId === "string") handler(noteId);
-  });
-  return () => void listener.unregister();
+  const tapped = async (id: number | undefined) => {
+    if (id === undefined) return;
+    const noteId = (await candidates()).find((n) => notificationId(n) === id);
+    if (noteId) handler(noteId);
+  };
+  try {
+    // Android only (ReminderTapPlugin.kt); the call fails elsewhere
+    const listener = await addPluginListener<TapEvent>("reminder-tap", "tap", (e) => void tapped(e.id));
+    void tapped((await invoke<TapEvent>("plugin:reminder-tap|takePending")).id);
+    return () => void listener.unregister();
+  } catch {
+    return () => {};
+  }
+}
+
+interface TapEvent {
+  id?: number;
 }
 
 /** Whether due reminders fire while the app is closed (the OS delivers them) */

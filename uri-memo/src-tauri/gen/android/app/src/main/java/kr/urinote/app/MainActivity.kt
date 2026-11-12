@@ -1,5 +1,6 @@
 package kr.urinote.app
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.activity.enableEdgeToEdge
@@ -20,5 +21,13 @@ class MainActivity : TauriActivity() {
       view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
       WindowInsetsCompat.CONSUMED
     }
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    // A notification tap can arrive here while the activity is being recreated (process killed in
+    // the background), before the plugins have loaded. Plugins read `intent` when they load, so
+    // keep the latest one there or the tap is lost.
+    setIntent(intent)
+    super.onNewIntent(intent)
   }
 }

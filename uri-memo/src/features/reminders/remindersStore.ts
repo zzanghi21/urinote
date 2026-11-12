@@ -70,6 +70,24 @@ export const useReminders = create<RemindersState>((set, get) => {
     async init(svc) {
       service = svc;
       const { missed } = splitReminders(await svc.withReminders(), Date.now());
+
+      // registered before past reminders are cleared: on mobile a tap that started the app is
+      // reported right away and must still find its note
+      await onReminderDue(
+        (noteId) => {
+          void (async () => {
+            if (isDesktopApp) await openSticky(noteId);
+            else await get().openMissed(noteId);
+            await clear(noteId);
+          })();
+        },
+        async () => [
+          ...missed.map((n) => n.id),
+          ...(await svc.withReminders()).map((n) => n.id),
+          ...useNotes.getState().notes.map((n) => n.id),
+        ],
+      );
+
       // on mobile the OS already delivered past reminders while the app was closed: just clear them
       if (!remindersFireWhileClosed) {
         set({
@@ -78,14 +96,6 @@ export const useReminders = create<RemindersState>((set, get) => {
       }
       for (const n of missed) await svc.setReminder(n.id, null);
       if (missed.length > 0) await useNotes.getState().refresh();
-
-      await onReminderDue((noteId) => {
-        void (async () => {
-          if (isDesktopApp) await openSticky(noteId);
-          else await get().openMissed(noteId);
-          await clear(noteId);
-        })();
-      });
       // resend the schedule whenever the note list changes (including changes from sticky windows)
       useNotes.subscribe((s, prev) => {
         if (s.notes !== prev.notes) scheduleSync();

@@ -36,7 +36,7 @@ adb install -r src-tauri/gen/android/app/build/outputs/apk/x86_64/debug/app-x86_
 
 - `tauri android build` links the Rust library into the Gradle project with a symlink. On Windows that needs **Developer Mode** (Settings → System → For developers). Without it, `npm run android:apk` copies the library instead.
 - Phones use the single-pane layout; the back button / gesture returns from a note to the list.
-- Reminders are scheduled OS notifications (delivered even when the app is closed); tapping one opens the note.
+- Reminders are scheduled OS notifications (delivered even when the app is closed, on time via exact alarms — `USE_EXACT_ALARM`); tapping one opens the note, also when the tap starts the app (`ReminderTapPlugin.kt`).
 - Not on mobile yet: friend sharing (P2P), JSON backup, auto-update (updates come from the store / a new APK).
 
 ## Commands
