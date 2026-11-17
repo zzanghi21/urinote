@@ -5,6 +5,10 @@
          Android 13+: USE_EXACT_ALARM (granted at install); Android 12: SCHEDULE_EXACT_ALARM (granted by default) -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
+    <!-- Friend sharing on the same Wi-Fi: mDNS discovery needs multicast (DevicePlugin.kt holds the lock) -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />

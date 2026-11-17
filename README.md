@@ -37,7 +37,8 @@ adb install -r src-tauri/gen/android/app/build/outputs/apk/x86_64/debug/app-x86_
 - `tauri android build` links the Rust library into the Gradle project with a symlink. On Windows that needs **Developer Mode** (Settings → System → For developers). Without it, `npm run android:apk` copies the library instead.
 - Phones use the single-pane layout; the back button / gesture returns from a note to the list.
 - Reminders are scheduled OS notifications (delivered even when the app is closed, on time via exact alarms — `USE_EXACT_ALARM`); tapping one opens the note, also when the tap starts the app (`ReminderTapPlugin.kt`).
-- Not on mobile yet: friend sharing (P2P), JSON backup, auto-update (updates come from the store / a new APK).
+- Friend sharing works as on the desktop. The device key lives in the app's private storage; `DevicePlugin.kt` supplies the phone's name and holds a Wi-Fi multicast lock so mDNS discovery sees other devices. The emulator sits behind NAT: it can't discover devices or be dialed, but it can connect to a PC with the PC's connection code.
+- Not on mobile yet: JSON backup, auto-update (updates come from the store / a new APK).
 
 ## Commands
 

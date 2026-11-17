@@ -4,7 +4,7 @@ import { fromBase64, toBase64 } from "../domain/noteDoc";
 
 /**
  * Same-Wi-Fi P2P layer (src-tauri/src/p2p). Handles transport, discovery and signing only;
- * ShareEngine interprets the messages. Desktop app only (isDesktopApp).
+ * ShareEngine interprets the messages. Desktop and mobile apps (inTauri).
  */
 
 export interface PeerInfo {

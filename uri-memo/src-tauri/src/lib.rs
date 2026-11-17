@@ -8,7 +8,8 @@ mod db_backup;
 mod legacy;
 #[cfg(desktop)]
 mod desktop;
-#[cfg(desktop)]
+#[cfg(mobile)]
+mod device;
 mod p2p;
 #[cfg(desktop)]
 mod reminders;
@@ -88,9 +89,11 @@ pub fn run() {
 
     let builder = builder.plugin(log_plugin());
 
-    // friend sharing (same-Wi-Fi P2P), reminders, backup files
+    // friend sharing (same-Wi-Fi P2P); desktop: reminders, backup files
+    let builder = p2p::init(builder);
     #[cfg(desktop)]
-    let builder = backup::init(reminders::init(p2p::init(builder))).invoke_handler(tauri::generate_handler![
+    let builder = backup::init(reminders::init(builder));
+    let builder = builder.invoke_handler(tauri::generate_handler![
         p2p::p2p_start,
         p2p::p2p_set_contacts,
         p2p::p2p_set_pairing,
@@ -103,9 +106,13 @@ pub fn run() {
         p2p::p2p_connected,
         p2p::p2p_sign,
         p2p::p2p_verify,
+        #[cfg(desktop)]
         reminders::reminders_set,
+        #[cfg(desktop)]
         backup::backup_save,
+        #[cfg(desktop)]
         backup::backup_open,
+        #[cfg(desktop)]
         desktop::tray_set_labels,
     ]);
 
@@ -113,7 +120,8 @@ pub fn run() {
     #[cfg(mobile)]
     let builder = builder
         .plugin(tauri_plugin_notification::init())
-        .plugin(reminder_tap_plugin());
+        .plugin(reminder_tap_plugin())
+        .plugin(device::plugin());
 
     builder
         .plugin(

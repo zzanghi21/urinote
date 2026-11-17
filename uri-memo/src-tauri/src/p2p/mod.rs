@@ -65,6 +65,7 @@ fn node<'a>(state: &'a State<'_, P2pState>) -> Result<&'a Node> {
 /// Kept in the OS secure store (Windows Credential Manager / macOS Keychain / Linux Secret Service).
 /// Without a secure store (e.g. Linux without a keyring daemon) it goes into a file in the app data
 /// folder (0600 on Unix, readable only by the user), and that file is used from then on.
+#[cfg(desktop)]
 fn device_key(service: &str, fallback: &Path) -> Result<SecretKey> {
     if fallback.exists() {
         return read_key_file(fallback);
@@ -80,6 +81,18 @@ fn device_key(service: &str, fallback: &Path) -> Result<SecretKey> {
     }
 }
 
+/// Mobile: the file in the app's private storage, which other apps can't read
+#[cfg(mobile)]
+fn device_key(_service: &str, file: &Path) -> Result<SecretKey> {
+    if file.exists() {
+        return read_key_file(file);
+    }
+    let key = SecretKey::generate();
+    write_key_file(file, &key)?;
+    Ok(key)
+}
+
+#[cfg(desktop)]
 fn keyring_key(service: &str) -> Result<SecretKey> {
     let entry = keyring::Entry::new(service, KEYRING_USER)?;
     match entry.get_password() {
@@ -183,6 +196,8 @@ pub(crate) async fn p2p_start<R: Runtime>(
             // secure-store calls may block (Linux D-Bus etc.), so run them off the async runtime
             let key = tauri::async_runtime::spawn_blocking(move || device_key(&service, &fallback))
                 .await??;
+            #[cfg(mobile)]
+            crate::device::hold_multicast(&app);
             let node = Node::start(key, NodeOptions::default(), tx).await?;
             forward_events(app.clone(), rx);
             anyhow::Ok(node)
@@ -224,10 +239,16 @@ pub(crate) async fn p2p_connect_addr(state: State<'_, P2pState>, addr: String) -
     Ok(id.to_string())
 }
 
-/// Default device display name (the PC name). Strips ".local" from macOS names like "MacBook-Pro.local"
+/// Default device display name: the PC name (minus ".local" as in macOS's "MacBook-Pro.local"),
+/// on a phone its name in the system settings
 #[tauri::command]
-pub(crate) fn p2p_default_name() -> String {
-    device_name(&gethostname::gethostname().to_string_lossy())
+pub(crate) fn p2p_default_name<R: Runtime>(app: AppHandle<R>) -> String {
+    #[cfg(desktop)]
+    let host = gethostname::gethostname().to_string_lossy().into_owned();
+    #[cfg(mobile)]
+    let host = crate::device::name(&app).unwrap_or_default();
+    let _ = app;
+    device_name(&host)
 }
 
 fn device_name(host: &str) -> String {

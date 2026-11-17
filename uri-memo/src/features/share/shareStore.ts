@@ -2,7 +2,7 @@ import { t } from "../../i18n";
 import { create } from "zustand";
 import { openStores } from "../../data";
 import type { Contact, ContactsRepository } from "../../data/local/contactsRepo";
-import { isDesktopApp } from "../../platform/env";
+import { inTauri } from "../../platform/env";
 import * as p2p from "../../platform/p2p";
 import { PairingSession, type PairingView } from "./pairing";
 import type { InboxItem, ShareRecord } from "../../data/local/sharesRepo";
@@ -283,7 +283,7 @@ export const useShare = create<ShareState>((set, get) => {
   };
 
   return {
-    available: isDesktopApp,
+    available: inTauri,
     started: false,
     error: null,
     myId: null,
@@ -298,7 +298,7 @@ export const useShare = create<ShareState>((set, get) => {
     shareDialogNoteId: null,
 
     async init() {
-      if (!isDesktopApp) return;
+      if (!inTauri) return;
       try {
         repo = (await openStores()).contacts;
         const name = (await repo?.getSetting(DEVICE_NAME_KEY)) ?? (await p2p.defaultDeviceName());
