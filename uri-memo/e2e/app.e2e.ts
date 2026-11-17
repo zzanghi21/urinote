@@ -37,8 +37,15 @@ async function open() {
   return app;
 }
 
+/** Read from the DOM: WebKitWebDriver's getText returns "" for these elements */
 async function titles(a: App) {
-  return a.$$(".note-card-title").map((c) => c.getText());
+  return a.execute(() =>
+    [...document.querySelectorAll(".note-card-title")].map((e) => e.textContent ?? ""),
+  );
+}
+
+async function editorText(a: App) {
+  return a.execute(() => document.querySelector(".note-editor-content")?.textContent ?? "");
 }
 
 async function newNote(a: App, text: string) {
@@ -49,7 +56,7 @@ async function newNote(a: App, text: string) {
   await editor.addValue(text);
   // WebKitWebDriver may not deliver send-keys to contenteditable: insert through the browser's
   // editing command instead, which ProseMirror handles like typing
-  if (!(await editor.getText()).includes(text)) {
+  if (!(await editorText(a)).includes(text)) {
     await a.execute((t) => document.execCommand("insertText", false, t), text);
   }
   await a.pause(SAVE_WAIT_MS);
